@@ -13,6 +13,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <TargetName>lampman</TargetName>
+    <AssemblyName>lampman</AssemblyName>
   </PropertyGroup>
 
 </Project>
