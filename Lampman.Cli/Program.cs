@@ -35,10 +35,39 @@ namespace Lampman.Cli
             Command listCmd = new("list", "List configured services");
             listCmd.SetAction(parseResult => ListCommand.Execute());
 
+            Argument<string> serviceArgument = new("service")
+            {
+                Description = "Service and version (e.g. php:8.3)"
+            };
+
+            Command installCmd = new("install", "Install a service")
+            {
+                serviceArgument
+            };
+            installCmd.SetAction(parseResult => serviceCommand.InstallExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
+
+            Command updateCmd = new("update", "Update a service")
+            {
+                serviceArgument
+            };
+            updateCmd.SetAction(parseResult => serviceCommand.UpdateExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
+
+            Command removeCmd = new("remove", "Remove a service")
+            {
+                serviceArgument
+            };
+            removeCmd.SetAction(parseResult => serviceCommand.RemoveExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
+
+            Command serviceCmd = new("service", "Manage Lampman services");
+            serviceCmd.Subcommands.Add(installCmd);
+            serviceCmd.Subcommands.Add(updateCmd);
+            serviceCmd.Subcommands.Add(removeCmd);
+
             rootCommand.Subcommands.Add(startCmd);
             rootCommand.Subcommands.Add(stopCmd);
             rootCommand.Subcommands.Add(restartCmd);
             rootCommand.Subcommands.Add(listCmd);
+            rootCommand.Subcommands.Add(serviceCmd);
 
             return rootCommand.Parse(args).Invoke();
         }
