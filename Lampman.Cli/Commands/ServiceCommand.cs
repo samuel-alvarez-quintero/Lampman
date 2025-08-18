@@ -2,7 +2,7 @@ using Lampman.Core.Services;
 
 namespace Lampman.Cli.Commands
 {
-    public static class serviceCommand
+    public static class ServiceCommand
     {
         public static async void InstallExecute(string service)
         {

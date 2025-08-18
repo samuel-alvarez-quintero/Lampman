@@ -44,19 +44,19 @@ namespace Lampman.Cli
             {
                 serviceArgument
             };
-            installCmd.SetAction(parseResult => serviceCommand.InstallExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
+            installCmd.SetAction(parseResult => ServiceCommand.InstallExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
 
             Command updateCmd = new("update", "Update a service")
             {
                 serviceArgument
             };
-            updateCmd.SetAction(parseResult => serviceCommand.UpdateExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
+            updateCmd.SetAction(parseResult => ServiceCommand.UpdateExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
 
             Command removeCmd = new("remove", "Remove a service")
             {
                 serviceArgument
             };
-            removeCmd.SetAction(parseResult => serviceCommand.RemoveExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
+            removeCmd.SetAction(parseResult => ServiceCommand.RemoveExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
 
             Command serviceCmd = new("service", "Manage Lampman services");
             serviceCmd.Subcommands.Add(installCmd);
