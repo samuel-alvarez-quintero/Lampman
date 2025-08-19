@@ -1,0 +1,19 @@
+{
+    "php": {
+        "php-8.2.29-Win32-vs16-x64": {
+            "Url": "https://windows.php.net/downloads/releases/php-8.2.29-Win32-vs16-x64.zip",
+            "Checksum": "3251789a0557eaae3cf25e7b10eccd2fb0480e1cc0ccc2666894c74de45eea76",
+            "ExtractTo": null
+        },
+        "php-8.3.24-Win32-vs16-x64": {
+            "Url": "https://windows.php.net/downloads/releases/php-8.3.24-Win32-vs16-x64.zip",
+            "Checksum": "922882c73ffa5d08192769b8030477ba63fca3e35bf78e9c8f22aef19cbe66e3",
+            "ExtractTo": null
+        },
+        "php-8.4.11-Win32-vs17-x64": {
+            "Url": "https://windows.php.net/downloads/releases/php-8.4.11-Win32-vs17-x64.zip",
+            "Checksum": "1d037fb48dd44c2e434954a0408cc8e0078558bec37dcd98bf85e334e28d57bc",
+            "ExtractTo": null
+        }
+    }
+}
