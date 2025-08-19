@@ -1,3 +1,5 @@
+using Lampman.Core;
+
 namespace Lampman.Installer.Commands
 {
     public static class InstallCommand
@@ -37,7 +39,7 @@ namespace Lampman.Installer.Commands
             }
 
             // Generate stack.json
-            var stackFile = Path.Combine(path, "stack.json");
+            var stackFile = PathResolver.StackFile;
             if (!File.Exists(stackFile) || repair)
             {
                 File.WriteAllText(stackFile, @"{ ""services"": [] }");

@@ -15,9 +15,11 @@ namespace Lampman.Core.Services
 
         private readonly StackConfig _config;
 
-        public StackManager(string configPath = "stack.json")
+        public StackManager()
         {
-            if (!File.Exists(configPath))
+            var StackconfigFile = PathResolver.StackFile;
+
+            if (!File.Exists(StackconfigFile))
             {
                 Console.WriteLine($"{ANSI_BlUE}[INFO] No config file found. Creating default stack.json...{ANSI_RESET}");
 
@@ -31,10 +33,10 @@ namespace Lampman.Core.Services
                     WriteIndented = true
                 });
 
-                File.WriteAllText(configPath, json);
+                File.WriteAllText(StackconfigFile, json);
             }
 
-            var fileContent = File.ReadAllText(configPath);
+            var fileContent = File.ReadAllText(StackconfigFile);
             _config = JsonSerializer.Deserialize<StackConfig>(fileContent)!;
         }
 

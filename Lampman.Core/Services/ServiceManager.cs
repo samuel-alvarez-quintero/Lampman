@@ -1,7 +1,4 @@
-using Lampman.Core.Models;
 using System.IO.Compression;
-using System.Net.Http;
-using System.Text.Json;
 
 namespace Lampman.Core.Services
 {
@@ -14,71 +11,65 @@ namespace Lampman.Core.Services
         const string ANSI_YELLOW = "\e[0;33m";
         const string ANSI_RESET = "\u001B[0m"; // Resets all formatting
 
+        private static readonly string InstallDir = PathResolver.ServicesInstallDir;
+
         public ServiceManager()
         {
         }
 
-        public async Task InstallService(string serviceSpec)
+        public async Task InstallService(string serviceInput)
         {
-            var parts = serviceSpec.Split(':');
-            var name = parts[0];
-            var version = parts.Length > 1 ? parts[1] : "latest";
+            var (name, version, meta) = ServiceResolver.Resolve(serviceInput);
+            var url = meta.Url;
 
-            var registry = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, ServiceInfo>>>(
-                File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "services.json"))
-            );
-
-            if (registry is null)
+            var targetDir = Path.Combine(InstallDir, name, version);
+            if (Directory.Exists(targetDir))
             {
-                Console.WriteLine($"[Lampman] Service registry is not available.");
+                Console.WriteLine($"[Lampman] Service {name}:{version} already installed.");
                 return;
             }
 
-            if (!registry.ContainsKey(name) || !registry[name].ContainsKey(version))
-            {
-                Console.WriteLine($"Service {name}:{version} not found in registry.");
-                return;
-            }
+            Console.WriteLine($"[Lampman] Installing {name}:{version}...");
+            Directory.CreateDirectory(targetDir);
 
-            var info = registry[name][version];
-            var url = info.Url;
-
-            var servicesPath = Path.Combine("C:\\Lampman\\services", name, version);
-            Directory.CreateDirectory(servicesPath);
-
-            Console.WriteLine($"[Lampman] Downloading {name}:{version}...");
+            var zipPath = Path.Combine(targetDir, $"{name}-{version}.zip");
             using var client = new HttpClient();
-            var zipPath = Path.Combine(Path.GetTempPath(), $"{name}-{version}.zip");
-            var bytes = await client.GetByteArrayAsync(url);
-            await File.WriteAllBytesAsync(zipPath, bytes);
+            var data = await client.GetByteArrayAsync(url);
+            await File.WriteAllBytesAsync(zipPath, data);
 
-            Console.WriteLine($"[Lampman] Extracting to {servicesPath}...");
-            ZipFile.ExtractToDirectory(zipPath, servicesPath, true);
+            ZipFile.ExtractToDirectory(zipPath, targetDir, true);
+            File.Delete(zipPath);
 
-            Console.WriteLine($"[Lampman] {name}:{version} installed successfully.");
+            Console.WriteLine($"[Lampman] Installed {name}:{version} in {targetDir}");
         }
 
-        public async Task UpdateService(string serviceSpec)
+        public async Task UpdateService(string serviceInput)
         {
-            Console.WriteLine($"[Lampman] Updating {serviceSpec}...");
-            await InstallService(serviceSpec); // replace install logic
-        }
+            var (name, version, _) = ServiceResolver.Resolve(serviceInput);
 
-        public void RemoveService(string serviceSpec)
-        {
-            var parts = serviceSpec.Split(':');
-            var name = parts[0];
-            var version = parts.Length > 1 ? parts[1] : "latest";
-
-            var servicesPath = Path.Combine("C:\\Lampman\\services", name, version);
-            if (Directory.Exists(servicesPath))
+            var targetDir = Path.Combine(InstallDir, name, version);
+            if (Directory.Exists(targetDir))
             {
-                Directory.Delete(servicesPath, true);
-                Console.WriteLine($"[Lampman] {name}:{version} removed.");
+                Console.WriteLine($"[Lampman] Updating {name}:{version}...");
+                Directory.Delete(targetDir, true);
+            }
+
+            await InstallService($"{name}:{version}");
+        }
+
+        public void RemoveService(string serviceInput)
+        {
+            var (name, version, _) = ServiceResolver.Resolve(serviceInput);
+            var targetDir = Path.Combine(InstallDir, name, version);
+
+            if (Directory.Exists(targetDir))
+            {
+                Directory.Delete(targetDir, true);
+                Console.WriteLine($"[Lampman] Removed {name}:{version}");
             }
             else
             {
-                Console.WriteLine($"[Lampman] {name}:{version} is not installed.");
+                Console.WriteLine($"[Lampman] Service {name}:{version} is not installed.");
             }
         }
     }
