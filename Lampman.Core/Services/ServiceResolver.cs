@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Lampman.Core.Models;
+using Lampman.Core.Utils;
 
 namespace Lampman.Core.Services
 {
@@ -7,36 +8,46 @@ namespace Lampman.Core.Services
     {
         private static readonly string ServicesConfigFile = PathResolver.ServicesFile;
 
-        public static (string name, string version, ServiceInfo meta) Resolve(string input)
+        public static (string serviceName, string version, ServiceSource metadata) Resolve(string input)
         {
             if (!File.Exists(ServicesConfigFile))
                 throw new Exception("Local services registry not found. Run `lampman registry update` first.");
 
-            var services = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, ServiceInfo>>>(
+            var services = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, ServiceSource>>>(
                 File.ReadAllText(ServicesConfigFile));
 
             // Parse input
-            var parts = input.Split(':', 2);
-            var name = parts[0];
-            var version = parts.Length > 1 ? parts[1] : null;
+            string[]? parts = input.Split(':', 2);
+            string serviceName = SlugHelper.GenerateSlug(parts[0]);
+            string? version = parts.Length > 1 ? SlugHelper.GenerateSlug(parts[1], true) : null;
 
             if (services is null)
                 throw new Exception("Local services registry is empty. Run `lampman registry update` first.");
 
-            if (!services.TryGetValue(name, out var versions))
-                throw new Exception($"Service `{name}` not found in registry.");
+            if (!services.TryGetValue(serviceName, out var serviceSelected))
+                throw new Exception($"Service `{serviceName}` not found in registry.");
 
             // Get latest by semantic order
-            version ??= versions.Keys
-                .Select(v => new Version(v))
+            if (version is null)
+            {
+                version = serviceSelected.Keys
                 .OrderByDescending(v => v)
                 .First()
                 .ToString();
+            }
+            else
+            {
+                version = serviceSelected.Keys
+                .Where(v => v.Contains(version))
+                .OrderByDescending(v => v)
+                .First()
+                .ToString();
+            }
 
-            if (!versions.TryGetValue(version, out ServiceInfo? value))
-                throw new Exception($"Service `{name}` does not have version `{version}`.");
+            if (!serviceSelected.TryGetValue(version, out ServiceSource? metadata))
+                throw new Exception($"Service `{serviceName}` does not have version `{version}`.");
 
-            return (name, version, value);
+            return (serviceName, version, metadata);
         }
     }
 }

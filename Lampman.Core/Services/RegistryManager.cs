@@ -1,6 +1,5 @@
 using Lampman.Core.Models;
-using System.IO.Compression;
-using System.Net.Http;
+using Lampman.Core.Utils;
 using System.Text.Json;
 
 namespace Lampman.Core.Services
@@ -90,11 +89,11 @@ namespace Lampman.Core.Services
             }
         }
 
-        public async Task UpdateRegistry()
+        public async Task UpdateServices()
         {
             EnsureConfig();
             var sources = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(RegistryConfigFile));
-            var merged = new Dictionary<string, Dictionary<string, object>>();
+            var merged = new Dictionary<string, Dictionary<string, ServiceSource>>();
 
             using var client = new HttpClient();
 
@@ -111,26 +110,26 @@ namespace Lampman.Core.Services
                     Console.WriteLine($"[Lampman] Fetching {src}...");
                     var json = await client.GetStringAsync(src);
 
-                    var registry = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, object>>>(json);
+                    var services = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, ServiceSource>>>(json);
 
-                    if (registry == null)
+                    if (services == null)
                     {
                         Console.WriteLine($"[Lampman] Invalid registry format from {src}");
                         continue;
                     }
 
-                    foreach (var service in registry)
+                    foreach (var service in services)
                     {
                         if (!merged.ContainsKey(service.Key))
-                            merged[service.Key] = new Dictionary<string, object>();
+                            merged[SlugHelper.GenerateSlug(service.Key)] = new Dictionary<string, ServiceSource>();
 
                         foreach (var ver in service.Value)
-                            merged[service.Key][ver.Key] = ver.Value;
+                            merged[SlugHelper.GenerateSlug(service.Key)][SlugHelper.GenerateSlug(ver.Key, true)] = ver.Value;
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[Lampman] Failed to fetch {src}: {ex.Message}");
+                    Console.WriteLine($"{ANSI_RED}[Lampman] Failed to fetch {src}: {ex.Message}{ANSI_RESET}");
                 }
             }
 

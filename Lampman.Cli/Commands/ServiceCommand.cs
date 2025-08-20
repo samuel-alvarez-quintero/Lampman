@@ -4,16 +4,16 @@ namespace Lampman.Cli.Commands
 {
     public static class ServiceCommand
     {
-        public static async void InstallExecute(string service)
+        public static void InstallExecute(string service)
         {
             var manager = new ServiceManager();
-            await manager.InstallService(service);
+            Task.Run(() => manager.InstallService(service)).Wait();
         }
 
-        public static async void UpdateExecute(string service)
+        public static void UpdateExecute(string service)
         {
             var manager = new ServiceManager();
-            await manager.UpdateService(service);
+            Task.Run(() => manager.UpdateService(service)).Wait();
         }
 
         public static void RemoveExecute(string service)

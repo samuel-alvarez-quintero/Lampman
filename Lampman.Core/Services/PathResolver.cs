@@ -22,7 +22,7 @@ namespace Lampman.Core
             {
                 // Dev mode → relative to solution/project
                 RootDir = Path.GetFullPath(
-                    Path.Combine(AppContext.BaseDirectory, @"../../../.."));
+                    Path.Combine(AppContext.BaseDirectory, @"."));
                 IsDev = true;
             }
 

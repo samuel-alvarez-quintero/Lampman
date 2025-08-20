@@ -1,5 +1,5 @@
 using System.IO.Compression;
-using Lampman.Core.Utils;
+using System.Security.Cryptography;
 
 namespace Lampman.Core.Services
 {
@@ -14,7 +14,7 @@ namespace Lampman.Core.Services
 
         private static readonly string InstallDir = PathResolver.ServicesInstallDir;
 
-        private static readonly HttpClient httpClient = new HttpClient(new LoggingHandler(new HttpClientHandler()));
+        private static readonly HttpClient httpClient = new HttpClient();
 
         public ServiceManager()
         {
@@ -29,73 +29,124 @@ namespace Lampman.Core.Services
 
         public async Task InstallService(string serviceInput)
         {
-            var (name, version, meta) = ServiceResolver.Resolve(serviceInput);
-            var url = meta.Url;
-
-            var targetDir = Path.Combine(InstallDir, name, version);
-            if (Directory.Exists(targetDir) && Directory.EnumerateFileSystemEntries(targetDir).Any())
+            try
             {
-                Console.WriteLine($"[Lampman] Service {name}:{version} already installed.");
-                return;
+                var (serviceName, version, meta) = ServiceResolver.Resolve(serviceInput);
+                var url = meta.Url;
+
+                var targetDir = Path.Combine(InstallDir, serviceName, version);
+                if (Directory.Exists(targetDir) && Directory.EnumerateFileSystemEntries(targetDir).Any())
+                {
+                    Console.WriteLine($"[Lampman] Service {serviceName}:{version} already installed.");
+                    return;
+                }
+
+                Console.WriteLine($"[Lampman] Installing {serviceName}:{version}...");
+                Directory.CreateDirectory(targetDir);
+
+                var zipPath = Path.Combine(InstallDir, serviceName, "tmp");
+
+                if (!Directory.Exists(zipPath))
+                {
+                    Console.WriteLine($"[Lampman] Creating temporary directory: {zipPath}");
+                    Directory.CreateDirectory(zipPath);
+                }
+
+                zipPath = Path.Combine(zipPath, $"{serviceName}-{version}.zip");
+
+                if (File.Exists(zipPath))
+                {
+                    Console.WriteLine($"[Lampman] Removing existing zip file: {zipPath}");
+                    File.Delete(zipPath);
+                }
+
+                await DownloadAndUnzipFileAsync(url, zipPath, targetDir, meta.Checksum);
+
+                Console.WriteLine($"[Lampman] Installed {serviceName}:{version} in {targetDir}");
             }
-
-            Console.WriteLine($"[Lampman] Installing {name}:{version}...");
-            Directory.CreateDirectory(targetDir);
-
-            var zipPath = Path.Combine(targetDir, $"{name}-{version}.zip");
-            if (File.Exists(zipPath))
+            catch (Exception ex)
             {
-                Console.WriteLine($"[Lampman] Removing existing zip file: {zipPath}");
-                File.Delete(zipPath);
+                Console.WriteLine($"{ANSI_RED}[Lampman] Error installing - {ex.Message}{ANSI_RESET}");
+                throw;
             }
-
-            await DownloadAndUnzipFileAsync(url, zipPath, targetDir);
-
-            Console.WriteLine($"[Lampman] Installed {name}:{version} in {targetDir}");
         }
 
         public async Task UpdateService(string serviceInput)
         {
-            var (name, version, _) = ServiceResolver.Resolve(serviceInput);
+            var (serviceName, version, _) = ServiceResolver.Resolve(serviceInput);
 
-            var targetDir = Path.Combine(InstallDir, name, version);
+            var targetDir = Path.Combine(InstallDir, serviceName, version);
             if (Directory.Exists(targetDir))
             {
-                Console.WriteLine($"[Lampman] Updating {name}:{version}...");
+                Console.WriteLine($"[Lampman] Updating {serviceName}:{version}...");
                 Directory.Delete(targetDir, true);
             }
 
-            await InstallService($"{name}:{version}");
+            await InstallService($"{serviceName}:{version}");
         }
 
         public void RemoveService(string serviceInput)
         {
-            var (name, version, _) = ServiceResolver.Resolve(serviceInput);
-            var targetDir = Path.Combine(InstallDir, name, version);
+            var (serviceName, version, _) = ServiceResolver.Resolve(serviceInput);
+            var targetDir = Path.Combine(InstallDir, serviceName, version);
 
             if (Directory.Exists(targetDir))
             {
                 Directory.Delete(targetDir, true);
-                Console.WriteLine($"[Lampman] Removed {name}:{version}");
+                Console.WriteLine($"[Lampman] Removed {serviceName}:{version}");
             }
             else
             {
-                Console.WriteLine($"[Lampman] Service {name}:{version} is not installed.");
+                Console.WriteLine($"[Lampman] Service {serviceName}:{version} is not installed.");
             }
         }
 
-        public async Task DownloadAndUnzipFileAsync(string fileUrl, string destinationZipPath, string extractDirectory)
+        private async Task DownloadAndUnzipFileAsync(string fileUrl, string destinationZipPath, string extractDirectory, string? expectedChecksum)
         {
             try
             {
                 // 1. Download the ZIP file
                 using var response = await httpClient.GetAsync(fileUrl, HttpCompletionOption.ResponseHeadersRead);
                 response.EnsureSuccessStatusCode(); // Throws an exception if the HTTP response status is not a success code.
-
+                
                 // 2. Save the downloaded stream to a local file
-                await using var contentStream = await response.Content.ReadAsStreamAsync();
-                await using var fileStream = new FileStream(destinationZipPath, FileMode.Create, FileAccess.Write, FileShare.None);
-                await contentStream.CopyToAsync(fileStream);
+                await using (var contentStream = await response.Content.ReadAsStreamAsync())
+                await using (var fileStream = new FileStream(destinationZipPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    // Compute checksum and copy to destination
+                    if (string.IsNullOrEmpty(expectedChecksum))
+                    {
+                        Console.WriteLine("No checksum provided, skipping verification.");
+
+                        await contentStream.CopyToAsync(fileStream);
+                    }
+                    else
+                    {
+                        // Pick algorithm explicitly
+                        using HashAlgorithm algo = SHA256.Create();
+
+                        // Wrap file stream with hashing stream
+                        using var cryptoStream = new CryptoStream(fileStream, algo, CryptoStreamMode.Write);
+
+                        await contentStream.CopyToAsync(cryptoStream);
+
+                        // Flush all buffers
+                        cryptoStream.FlushFinalBlock();
+
+                        // Compute final hash
+                        var hashBytes = algo.Hash!;
+                        var actualChecksum = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+
+                        if (string.Equals(actualChecksum, expectedChecksum.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
+                        {
+                            Console.WriteLine($"Checksum verified: {actualChecksum}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Checksum mismatch: {actualChecksum}");
+                        }
+                    }
+                }
 
                 Console.WriteLine($"Downloaded: {destinationZipPath}");
 

@@ -26,7 +26,7 @@ namespace Lampman.Cli.Commands
         public static async Task UpdateExecute()
         {
             var manager = new RegistryManager();
-            await manager.UpdateRegistry();
+            await manager.UpdateServices();
         }
     }
 }

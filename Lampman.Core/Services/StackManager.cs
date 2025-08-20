@@ -25,7 +25,7 @@ namespace Lampman.Core.Services
 
                 var defaultConfig = new StackConfig
                 {
-                    Services = new List<ServiceDefinition>([])
+                    Services = new List<ServiceProcess>([])
                 };
 
                 var json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions
@@ -102,7 +102,7 @@ namespace Lampman.Core.Services
                 Console.WriteLine($"{s.Name} {s.Version}");
         }
 
-        private IEnumerable<ServiceDefinition> FilterServices(IEnumerable<string>? names)
+        private IEnumerable<ServiceProcess> FilterServices(IEnumerable<string>? names)
         {
             if (names is null || !names.Any()) return _config.Services;
             return _config.Services.Where(s => names.Contains(s.Name, StringComparer.OrdinalIgnoreCase));
