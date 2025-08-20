@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using Lampman.Core.Utils;
 
 namespace Lampman.Core.Services
 {
@@ -13,8 +14,17 @@ namespace Lampman.Core.Services
 
         private static readonly string InstallDir = PathResolver.ServicesInstallDir;
 
+        private static readonly HttpClient httpClient = new HttpClient(new LoggingHandler(new HttpClientHandler()));
+
         public ServiceManager()
         {
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+            "AppleWebKit/537.36 (KHTML, like Gecko) " +
+            "Chrome/122.0 Safari/537.36");
+
+            httpClient.DefaultRequestHeaders.Accept.ParseAdd("*/*");
+            httpClient.DefaultRequestHeaders.Connection.Add("keep-alive");
         }
 
         public async Task InstallService(string serviceInput)
@@ -23,7 +33,7 @@ namespace Lampman.Core.Services
             var url = meta.Url;
 
             var targetDir = Path.Combine(InstallDir, name, version);
-            if (Directory.Exists(targetDir))
+            if (Directory.Exists(targetDir) && Directory.EnumerateFileSystemEntries(targetDir).Any())
             {
                 Console.WriteLine($"[Lampman] Service {name}:{version} already installed.");
                 return;
@@ -33,12 +43,13 @@ namespace Lampman.Core.Services
             Directory.CreateDirectory(targetDir);
 
             var zipPath = Path.Combine(targetDir, $"{name}-{version}.zip");
-            using var client = new HttpClient();
-            var data = await client.GetByteArrayAsync(url);
-            await File.WriteAllBytesAsync(zipPath, data);
+            if (File.Exists(zipPath))
+            {
+                Console.WriteLine($"[Lampman] Removing existing zip file: {zipPath}");
+                File.Delete(zipPath);
+            }
 
-            ZipFile.ExtractToDirectory(zipPath, targetDir, true);
-            File.Delete(zipPath);
+            await DownloadAndUnzipFileAsync(url, zipPath, targetDir);
 
             Console.WriteLine($"[Lampman] Installed {name}:{version} in {targetDir}");
         }
@@ -70,6 +81,39 @@ namespace Lampman.Core.Services
             else
             {
                 Console.WriteLine($"[Lampman] Service {name}:{version} is not installed.");
+            }
+        }
+
+        public async Task DownloadAndUnzipFileAsync(string fileUrl, string destinationZipPath, string extractDirectory)
+        {
+            try
+            {
+                // 1. Download the ZIP file
+                using var response = await httpClient.GetAsync(fileUrl, HttpCompletionOption.ResponseHeadersRead);
+                response.EnsureSuccessStatusCode(); // Throws an exception if the HTTP response status is not a success code.
+
+                // 2. Save the downloaded stream to a local file
+                await using var contentStream = await response.Content.ReadAsStreamAsync();
+                await using var fileStream = new FileStream(destinationZipPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                await contentStream.CopyToAsync(fileStream);
+
+                Console.WriteLine($"Downloaded: {destinationZipPath}");
+
+                // 3. Unzip the downloaded file
+                ZipFile.ExtractToDirectory(destinationZipPath, extractDirectory, true); // 'true' overwrites existing files
+                Console.WriteLine($"Unzipped to: {extractDirectory}");
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.WriteLine($"HTTP error during download: {ex.Message}");
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine($"File I/O error during download or unzip: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
             }
         }
     }

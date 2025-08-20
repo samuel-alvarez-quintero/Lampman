@@ -487,3 +487,5 @@ stack.json
 registry.json
 install.json
 services.json
+
+services/

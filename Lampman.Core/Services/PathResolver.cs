@@ -9,7 +9,7 @@ namespace Lampman.Core
         static PathResolver()
         {
             // 1. Check for install.json in production path
-            string defaultInstallRoot = @"C:\Lampman";
+            string defaultInstallRoot = @"C:/Lampman";
             string installFile = Path.Combine(defaultInstallRoot, "install.json");
 
             if (File.Exists(installFile))
@@ -22,7 +22,7 @@ namespace Lampman.Core
             {
                 // Dev mode → relative to solution/project
                 RootDir = Path.GetFullPath(
-                    Path.Combine(AppContext.BaseDirectory, @"..\..\..\.."));
+                    Path.Combine(AppContext.BaseDirectory, @"../../../.."));
                 IsDev = true;
             }
 
