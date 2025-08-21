@@ -8,7 +8,7 @@ namespace Lampman.Core.Services
         // ANSI escape codes for colors
         const string ANSI_RED = "\u001B[31m";
         const string ANSI_GREEN = "\u001B[32m";
-        const string ANSI_BlUE = "\e[0;34m";
+        const string ANSI_BLUE = "\e[0;34m";
         const string ANSI_YELLOW = "\e[0;33m";
         const string ANSI_RESET = "\u001B[0m"; // Resets all formatting
 
@@ -37,18 +37,18 @@ namespace Lampman.Core.Services
                 var targetDir = Path.Combine(InstallDir, serviceName, version);
                 if (Directory.Exists(targetDir) && Directory.EnumerateFileSystemEntries(targetDir).Any())
                 {
-                    Console.WriteLine($"[Lampman] Service {serviceName}:{version} already installed.");
+                    Console.WriteLine($"{ANSI_YELLOW}[WARNING] Service {serviceName}:{version} already installed.{ANSI_RESET}");
                     return;
                 }
 
-                Console.WriteLine($"[Lampman] Installing {serviceName}:{version}...");
+                Console.WriteLine($"{ANSI_BLUE}[INFO] Installing {serviceName}:{version}...{ANSI_RESET}");
                 Directory.CreateDirectory(targetDir);
 
                 var zipPath = Path.Combine(InstallDir, serviceName, "tmp");
 
                 if (!Directory.Exists(zipPath))
                 {
-                    Console.WriteLine($"[Lampman] Creating temporary directory: {zipPath}");
+                    Console.WriteLine($"{ANSI_BLUE}[INFO] Creating temporary directory: {zipPath}{ANSI_RESET}");
                     Directory.CreateDirectory(zipPath);
                 }
 
@@ -56,17 +56,17 @@ namespace Lampman.Core.Services
 
                 if (File.Exists(zipPath))
                 {
-                    Console.WriteLine($"[Lampman] Removing existing zip file: {zipPath}");
+                    Console.WriteLine($"{ANSI_YELLOW}[WARNING] Removing existing zip file: {zipPath}{ANSI_RESET}");
                     File.Delete(zipPath);
                 }
 
                 await DownloadAndUnzipFileAsync(url, zipPath, targetDir, meta.Checksum);
 
-                Console.WriteLine($"[Lampman] Installed {serviceName}:{version} in {targetDir}");
+                Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Installed {serviceName}:{version} in {targetDir}{ANSI_RESET}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ANSI_RED}[Lampman] Error installing - {ex.Message}{ANSI_RESET}");
+                Console.WriteLine($"{ANSI_RED}[ERROR] Failed to install - {ex.Message}{ANSI_RESET}");
                 throw;
             }
         }
@@ -78,7 +78,7 @@ namespace Lampman.Core.Services
             var targetDir = Path.Combine(InstallDir, serviceName, version);
             if (Directory.Exists(targetDir))
             {
-                Console.WriteLine($"[Lampman] Updating {serviceName}:{version}...");
+                Console.WriteLine($"{ANSI_BLUE}[INFO] Updating {serviceName}:{version}...{ANSI_RESET}");
                 Directory.Delete(targetDir, true);
             }
 
@@ -93,11 +93,11 @@ namespace Lampman.Core.Services
             if (Directory.Exists(targetDir))
             {
                 Directory.Delete(targetDir, true);
-                Console.WriteLine($"[Lampman] Removed {serviceName}:{version}");
+                Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Removed {serviceName}:{version}{ANSI_RESET}");
             }
             else
             {
-                Console.WriteLine($"[Lampman] Service {serviceName}:{version} is not installed.");
+                Console.WriteLine($"{ANSI_YELLOW}[WARNING] Service {serviceName}:{version} is not installed.{ANSI_RESET}");
             }
         }
 
@@ -116,7 +116,7 @@ namespace Lampman.Core.Services
                     // Compute checksum and copy to destination
                     if (string.IsNullOrEmpty(expectedChecksum))
                     {
-                        Console.WriteLine("No checksum provided, skipping verification.");
+                        Console.WriteLine($"{ANSI_YELLOW}[WARNING] No checksum provided, skipping verification.{ANSI_RESET}");
 
                         await contentStream.CopyToAsync(fileStream);
                     }
@@ -139,32 +139,32 @@ namespace Lampman.Core.Services
 
                         if (string.Equals(actualChecksum, expectedChecksum.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
                         {
-                            Console.WriteLine($"Checksum verified: {actualChecksum}");
+                            Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Checksum verified: {actualChecksum}{ANSI_RESET}");
                         }
                         else
                         {
-                            Console.WriteLine($"Checksum mismatch: {actualChecksum}");
+                            Console.WriteLine($"{ANSI_RED}[ERROR] Checksum mismatch: {actualChecksum}{ANSI_RESET}");
                         }
                     }
                 }
 
-                Console.WriteLine($"Downloaded: {destinationZipPath}");
+                Console.WriteLine($"{ANSI_BLUE}[INFO] Downloaded: {destinationZipPath}{ANSI_RESET}");
 
                 // 3. Unzip the downloaded file
                 ZipFile.ExtractToDirectory(destinationZipPath, extractDirectory, true); // 'true' overwrites existing files
-                Console.WriteLine($"Unzipped to: {extractDirectory}");
+                Console.WriteLine($"{ANSI_BLUE}[INFO] Unzipped to: {extractDirectory}{ANSI_RESET}");
             }
             catch (HttpRequestException ex)
             {
-                Console.WriteLine($"HTTP error during download: {ex.Message}");
+                Console.WriteLine($"{ANSI_RED}[ERROR] HTTP error during download: {ex.Message}{ANSI_RESET}");
             }
             catch (IOException ex)
             {
-                Console.WriteLine($"File I/O error during download or unzip: {ex.Message}");
+                Console.WriteLine($"{ANSI_RED}[ERROR] File I/O error during download or unzip: {ex.Message}{ANSI_RESET}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+                Console.WriteLine($"{ANSI_RED}[ERROR] An unexpected error occurred: {ex.Message}{ANSI_RESET}");
             }
         }
     }

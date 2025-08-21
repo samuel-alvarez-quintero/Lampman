@@ -9,7 +9,7 @@ namespace Lampman.Core.Services
         // ANSI escape codes for colors
         const string ANSI_RED = "\u001B[31m";
         const string ANSI_GREEN = "\u001B[32m";
-        const string ANSI_BlUE = "\e[0;34m";
+        const string ANSI_BLUE = "\e[0;34m";
         const string ANSI_YELLOW = "\e[0;33m";
         const string ANSI_RESET = "\u001B[0m"; // Resets all formatting
 
@@ -21,7 +21,7 @@ namespace Lampman.Core.Services
 
             if (!File.Exists(StackconfigFile))
             {
-                Console.WriteLine($"{ANSI_BlUE}[INFO] No config file found. Creating default stack.json...{ANSI_RESET}");
+                Console.WriteLine($"{ANSI_BLUE}[INFO] No config file found. Creating default stack.json...{ANSI_RESET}");
 
                 var defaultConfig = new StackConfig
                 {

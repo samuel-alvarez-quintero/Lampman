@@ -9,7 +9,7 @@ namespace Lampman.Core.Services
         // ANSI escape codes for colors
         const string ANSI_RED = "\u001B[31m";
         const string ANSI_GREEN = "\u001B[32m";
-        const string ANSI_BlUE = "\e[0;34m";
+        const string ANSI_BLUE = "\e[0;34m";
         const string ANSI_YELLOW = "\e[0;33m";
         const string ANSI_RESET = "\u001B[0m"; // Resets all formatting
 
@@ -33,11 +33,11 @@ namespace Lampman.Core.Services
         {
             EnsureConfig();
             var sources = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(RegistryConfigFile));
-            Console.WriteLine("[Lampman] Configured registries:");
+            Console.WriteLine($"{ANSI_BLUE}[INFO] Configured registries:{ANSI_RESET}");
 
             if (sources == null || sources.Count == 0)
             {
-                Console.WriteLine(" - No registries configured.");
+                Console.WriteLine($"{ANSI_YELLOW}[WARNING] No registries configured.{ANSI_RESET}");
                 return;
             }
 
@@ -57,13 +57,20 @@ namespace Lampman.Core.Services
 
             if (!sources.Contains(url))
             {
+                // Verificate URL format
+                if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+                {
+                    Console.WriteLine($"{ANSI_RED}[ERROR] Invalid URL format: {url}{ANSI_RESET}");
+                    return;
+                }
+
                 sources.Add(url);
                 File.WriteAllText(RegistryConfigFile, JsonSerializer.Serialize(sources, new JsonSerializerOptions { WriteIndented = true }));
-                Console.WriteLine($"[Lampman] Added registry: {url}");
+                Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Added registry: {url}{ANSI_RESET}");
             }
             else
             {
-                Console.WriteLine("[Lampman] Registry already exists.");
+                Console.WriteLine($"{ANSI_YELLOW}[WARNING] Registry already exists.{ANSI_RESET}");
             }
         }
 
@@ -74,18 +81,18 @@ namespace Lampman.Core.Services
 
             if (sources == null)
             {
-                Console.WriteLine("[Lampman] No registries configured.");
+                Console.WriteLine($"{ANSI_YELLOW}[WARNING] No registries configured.{ANSI_RESET}");
                 return;
             }
 
             if (sources.Remove(url))
             {
                 File.WriteAllText(RegistryConfigFile, JsonSerializer.Serialize(sources, new JsonSerializerOptions { WriteIndented = true }));
-                Console.WriteLine($"[Lampman] Removed registry: {url}");
+                Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Removed registry: {url}{ANSI_RESET}");
             }
             else
             {
-                Console.WriteLine("[Lampman] Registry not found.");
+                Console.WriteLine($"{ANSI_YELLOW}[WARNING] Registry not found.{ANSI_RESET}");
             }
         }
 
@@ -99,7 +106,7 @@ namespace Lampman.Core.Services
 
             if (sources == null || sources.Count == 0)
             {
-                Console.WriteLine("[Lampman] No registries configured.");
+                Console.WriteLine($"{ANSI_YELLOW}[WARNING] No registries configured.{ANSI_RESET}");
                 return;
             }
 
@@ -107,14 +114,14 @@ namespace Lampman.Core.Services
             {
                 try
                 {
-                    Console.WriteLine($"[Lampman] Fetching {src}...");
+                    Console.WriteLine($"{ANSI_BLUE}[INFO] Fetching {src}...{ANSI_RESET}");
                     var json = await client.GetStringAsync(src);
 
                     var services = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, ServiceSource>>>(json);
 
                     if (services == null)
                     {
-                        Console.WriteLine($"[Lampman] Invalid registry format from {src}");
+                        Console.WriteLine($"{ANSI_RED}[ERROR] Invalid registry format from {src}{ANSI_RESET}");
                         continue;
                     }
 
@@ -136,12 +143,12 @@ namespace Lampman.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{ANSI_RED}[Lampman] Failed to fetch {src}: {ex.Message}{ANSI_RESET}");
+                    Console.WriteLine($"{ANSI_RED}[ERROR] Failed to fetch {src}: {ex.Message}{ANSI_RESET}");
                 }
             }
 
             File.WriteAllText(ServicesConfigFile, JsonSerializer.Serialize(merged, new JsonSerializerOptions { WriteIndented = true }));
-            Console.WriteLine($"[Lampman] Registry updated → {ServicesConfigFile}");
+            Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Registry updated → {ServicesConfigFile}{ANSI_RESET}");
         }
     }
 }
