@@ -9,21 +9,23 @@ namespace Lampman.Core.Services
         // ANSI escape codes for colors
         const string ANSI_RED = "\u001B[31m";
         const string ANSI_GREEN = "\u001B[32m";
-        const string ANSI_BlUE = "\e[0;34m";
+        const string ANSI_BLUE = "\e[0;34m";
         const string ANSI_YELLOW = "\e[0;33m";
         const string ANSI_RESET = "\u001B[0m"; // Resets all formatting
 
         private readonly StackConfig _config;
 
-        public StackManager(string configPath = "stack.json")
+        public StackManager()
         {
-            if (!File.Exists(configPath))
+            var StackconfigFile = PathResolver.StackFile;
+
+            if (!File.Exists(StackconfigFile))
             {
-                Console.WriteLine($"{ANSI_BlUE}[INFO] No config file found. Creating default stack.json...{ANSI_RESET}");
+                Console.WriteLine($"{ANSI_BLUE}[INFO] No config file found. Creating default stack.json...{ANSI_RESET}");
 
                 var defaultConfig = new StackConfig
                 {
-                    Services = new List<ServiceDefinition>([])
+                    Services = new List<ServiceProcess>([])
                 };
 
                 var json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions
@@ -31,10 +33,10 @@ namespace Lampman.Core.Services
                     WriteIndented = true
                 });
 
-                File.WriteAllText(configPath, json);
+                File.WriteAllText(StackconfigFile, json);
             }
 
-            var fileContent = File.ReadAllText(configPath);
+            var fileContent = File.ReadAllText(StackconfigFile);
             _config = JsonSerializer.Deserialize<StackConfig>(fileContent)!;
         }
 
@@ -46,6 +48,12 @@ namespace Lampman.Core.Services
             {
                 foreach (var service in toStart)
                 {
+                    if (service.Start is null)
+                    {
+                        Console.WriteLine($"{ANSI_RED}[ERROR] Cannot start {service.Name} - Start command is not defined.{ANSI_RESET}");
+                        continue;
+                    }
+
                     if (!ServiceExists(service.Start))
                     {
                         Console.WriteLine($"{ANSI_RED}[ERROR] Cannot start {service.Name} - File not found: {service.Start}{ANSI_RESET}");
@@ -71,9 +79,15 @@ namespace Lampman.Core.Services
                 foreach (var service in toStop)
                 {
                     var exeName = Path.GetFileNameWithoutExtension(service.Start);
-                    if (!IsProcessRunning(exeName))
+                    if (exeName is null || !IsProcessRunning(exeName))
                     {
                         Console.WriteLine($"{ANSI_YELLOW}[WARNING] {service.Name} is not running.{ANSI_RESET}");
+                        continue;
+                    }
+
+                    if (service.Stop is null)
+                    {
+                        Console.WriteLine($"{ANSI_RED}[ERROR] Cannot stop {service.Name} - Stop command is not defined.{ANSI_RESET}");
                         continue;
                     }
 
@@ -100,7 +114,7 @@ namespace Lampman.Core.Services
                 Console.WriteLine($"{s.Name} {s.Version}");
         }
 
-        private IEnumerable<ServiceDefinition> FilterServices(IEnumerable<string>? names)
+        private IEnumerable<ServiceProcess> FilterServices(IEnumerable<string>? names)
         {
             if (names is null || !names.Any()) return _config.Services;
             return _config.Services.Where(s => names.Contains(s.Name, StringComparer.OrdinalIgnoreCase));

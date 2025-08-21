@@ -2,6 +2,6 @@ namespace Lampman.Core.Models
 {
     public class StackConfig
     {
-        public List<ServiceDefinition> Services { get; set; } = new();
+        public List<ServiceProcess> Services { get; set; } = new();
     }
 }

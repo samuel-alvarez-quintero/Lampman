@@ -1,4 +1,5 @@
-﻿using Lampman.Installer.Commands;
+﻿using Lampman.Core;
+using Lampman.Installer.Commands;
 using System.CommandLine;
 
 namespace Lampman.Cli
@@ -12,7 +13,7 @@ namespace Lampman.Cli
             Option<string> pathOption = new(name: "--path")
             {
                 Description = "Installation path",
-                DefaultValueFactory = _ => @"C:\Lampman"
+                DefaultValueFactory = _ => PathResolver.RootDir
             };
 
             Option<bool> repairOption = new(name: "--repair")
