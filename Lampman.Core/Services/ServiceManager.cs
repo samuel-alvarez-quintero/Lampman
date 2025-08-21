@@ -101,20 +101,20 @@ namespace Lampman.Core.Services
             }
         }
 
-        private async Task DownloadAndUnzipFileAsync(string fileUrl, string destinationZipPath, string extractDirectory, string? expectedChecksum)
+        private async Task DownloadAndUnzipFileAsync(string fileUrl, string destinationZipPath, string extractDirectory, Dictionary<string, string>? Checksum)
         {
             try
             {
                 // 1. Download the ZIP file
                 using var response = await httpClient.GetAsync(fileUrl, HttpCompletionOption.ResponseHeadersRead);
                 response.EnsureSuccessStatusCode(); // Throws an exception if the HTTP response status is not a success code.
-                
+
                 // 2. Save the downloaded stream to a local file
                 await using (var contentStream = await response.Content.ReadAsStreamAsync())
                 await using (var fileStream = new FileStream(destinationZipPath, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     // Compute checksum and copy to destination
-                    if (string.IsNullOrEmpty(expectedChecksum))
+                    if (Checksum == null || Checksum.Count == 0)
                     {
                         Console.WriteLine($"{ANSI_YELLOW}[WARNING] No checksum provided, skipping verification.{ANSI_RESET}");
 
@@ -122,28 +122,53 @@ namespace Lampman.Core.Services
                     }
                     else
                     {
-                        // Pick algorithm explicitly
-                        using HashAlgorithm algo = SHA256.Create();
-
-                        // Wrap file stream with hashing stream
-                        using var cryptoStream = new CryptoStream(fileStream, algo, CryptoStreamMode.Write);
-
-                        await contentStream.CopyToAsync(cryptoStream);
-
-                        // Flush all buffers
-                        cryptoStream.FlushFinalBlock();
-
-                        // Compute final hash
-                        var hashBytes = algo.Hash!;
-                        var actualChecksum = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-
-                        if (string.Equals(actualChecksum, expectedChecksum.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
+                        foreach (var (hashFunc, expectedChecksum) in Checksum)
                         {
-                            Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Checksum verified: {actualChecksum}{ANSI_RESET}");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"{ANSI_RED}[ERROR] Checksum mismatch: {actualChecksum}{ANSI_RESET}");
+                            HashAlgorithm algo;
+
+                            switch (hashFunc)
+                            {
+                                case "SHA512":
+                                    algo = SHA512.Create();
+                                    break;
+                                case "SHA384":
+                                    algo = SHA384.Create();
+                                    break;
+                                case "SHA256":
+                                    algo = SHA256.Create();
+                                    break;
+                                case "SHA1":
+                                    algo = SHA1.Create();
+                                    break;
+
+                                default:
+                                    Console.WriteLine($"{ANSI_YELLOW}[WARNING] Unknown hash algorithm: {hashFunc}{ANSI_RESET}");
+                                    continue;
+                            }
+
+                            Console.WriteLine($"{ANSI_BLUE}[INFO] Verifying checksum for {hashFunc}...{ANSI_RESET}");
+
+                            // Wrap file stream with hashing stream
+                            using var cryptoStream = new CryptoStream(fileStream, algo, CryptoStreamMode.Write);
+
+                            await contentStream.CopyToAsync(cryptoStream);
+
+                            // Flush all buffers
+                            cryptoStream.FlushFinalBlock();
+
+                            // Compute final hash
+                            var hashBytes = algo.Hash!;
+                            var actualChecksum = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+
+                            if (string.Equals(actualChecksum, expectedChecksum.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
+                            {
+                                Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Checksum verified: {actualChecksum}{ANSI_RESET}");
+                                break;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"{ANSI_RED}[ERROR] Checksum mismatch: {actualChecksum}{ANSI_RESET}");
+                            }
                         }
                     }
                 }
