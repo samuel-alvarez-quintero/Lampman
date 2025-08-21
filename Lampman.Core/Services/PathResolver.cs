@@ -28,7 +28,7 @@ namespace Lampman.Core
 
             DefaultRegistrySource = new List<string>
             {
-                "https://raw.githubusercontent.com/samuel-alvarez-quintero/Lampman/refs/tags/v1.1.0/registry/MainOriginServices.json"
+                "https://raw.githubusercontent.com/samuel-alvarez-quintero/Lampman/refs/heads/master/registry/MainOriginServices.json"
             };
         }
 

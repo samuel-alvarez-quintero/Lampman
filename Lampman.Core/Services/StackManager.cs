@@ -48,6 +48,12 @@ namespace Lampman.Core.Services
             {
                 foreach (var service in toStart)
                 {
+                    if (service.Start is null)
+                    {
+                        Console.WriteLine($"{ANSI_RED}[ERROR] Cannot start {service.Name} - Start command is not defined.{ANSI_RESET}");
+                        continue;
+                    }
+
                     if (!ServiceExists(service.Start))
                     {
                         Console.WriteLine($"{ANSI_RED}[ERROR] Cannot start {service.Name} - File not found: {service.Start}{ANSI_RESET}");
@@ -73,9 +79,15 @@ namespace Lampman.Core.Services
                 foreach (var service in toStop)
                 {
                     var exeName = Path.GetFileNameWithoutExtension(service.Start);
-                    if (!IsProcessRunning(exeName))
+                    if (exeName is null || !IsProcessRunning(exeName))
                     {
                         Console.WriteLine($"{ANSI_YELLOW}[WARNING] {service.Name} is not running.{ANSI_RESET}");
+                        continue;
+                    }
+
+                    if (service.Stop is null)
+                    {
+                        Console.WriteLine($"{ANSI_RED}[ERROR] Cannot stop {service.Name} - Stop command is not defined.{ANSI_RESET}");
                         continue;
                     }
 

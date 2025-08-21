@@ -120,11 +120,18 @@ namespace Lampman.Core.Services
 
                     foreach (var service in services)
                     {
-                        if (!merged.ContainsKey(service.Key))
-                            merged[SlugHelper.GenerateSlug(service.Key)] = new Dictionary<string, ServiceSource>();
+                        string serviceName = SlugHelper.GenerateSlug(service.Key);
+
+                        if (!merged.ContainsKey(serviceName))
+                            merged[serviceName] = new Dictionary<string, ServiceSource>();
 
                         foreach (var ver in service.Value)
-                            merged[SlugHelper.GenerateSlug(service.Key)][SlugHelper.GenerateSlug(ver.Key, true)] = ver.Value;
+                        {
+                            string versionSlug = SlugHelper.GenerateSlug(ver.Key, true);
+
+                            if (!merged[serviceName].ContainsKey(versionSlug))
+                                merged[serviceName][versionSlug] = ver.Value;
+                        }
                     }
                 }
                 catch (Exception ex)
