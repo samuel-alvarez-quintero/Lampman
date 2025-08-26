@@ -488,4 +488,4 @@ registry.json
 install.json
 services.json
 
-services/
+/services
