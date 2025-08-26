@@ -14,6 +14,7 @@ namespace Lampman.Core.Services
         const string ANSI_RESET = "\u001B[0m"; // Resets all formatting
 
         private readonly StackConfig _config;
+        private readonly Dictionary<string, StackProcess> _processes = new();
 
         public StackManager()
         {
@@ -60,8 +61,10 @@ namespace Lampman.Core.Services
                         continue;
                     }
 
+                    _processes[service.Name] = new StackProcess();
+                    _processes[service.Name].Start(service.Start);
+
                     Console.WriteLine($"{ANSI_GREEN}[START] {service.Name} ({service.Version}){ANSI_RESET}");
-                    StartProcess(service.Start);
                 }
             }
             else
@@ -91,8 +94,15 @@ namespace Lampman.Core.Services
                         continue;
                     }
 
+                    if (!_processes.ContainsKey(service.Name))
+                    {
+                        Console.WriteLine($"{ANSI_RED}[ERROR] Cannot stop {service.Name} - Process not found.{ANSI_RESET}");
+                        continue;
+                    }
+
+                    _processes[service.Name].Stop(service.Stop);
+
                     Console.WriteLine($"{ANSI_GREEN}[STOP] {service.Name}{ANSI_RESET}");
-                    RunCommand(service.Stop);
                 }
             }
             else

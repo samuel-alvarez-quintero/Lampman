@@ -4,9 +4,10 @@ namespace Lampman.Cli.Commands
 {
     public static class RestartCommand
     {
+        private static readonly StackManager manager = new();
+
         public static void Execute(string[]? services)
         {
-            var manager = new StackManager();
             manager.RestartServices(services);
         }
     }
