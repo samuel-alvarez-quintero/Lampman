@@ -32,7 +32,7 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Run tests with config
-        run: dotnet test --no-build --verbosity normal --settings testconfig.json
+        run: dotnet test --verbosity normal --settings testconfig.json
 
       - name: Upload coverage report
         if: always()
