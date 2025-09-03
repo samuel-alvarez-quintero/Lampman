@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lampman.Cli", "Lampman.Cli\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lampman.Installer", "Lampman.Installer\Lampman.Installer.csproj", "{4960A012-C476-4870-B79F-BD724A41CD6D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lampman.Tests", "Lampman.Tests\Lampman.Tests.csproj", "{EF4E9BE1-5594-4E5B-B03E-4948266398A9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{4960A012-C476-4870-B79F-BD724A41CD6D}.Release|x64.Build.0 = Release|Any CPU
 		{4960A012-C476-4870-B79F-BD724A41CD6D}.Release|x86.ActiveCfg = Release|Any CPU
 		{4960A012-C476-4870-B79F-BD724A41CD6D}.Release|x86.Build.0 = Release|Any CPU
+		{EF4E9BE1-5594-4E5B-B03E-4948266398A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EF4E9BE1-5594-4E5B-B03E-4948266398A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF4E9BE1-5594-4E5B-B03E-4948266398A9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{EF4E9BE1-5594-4E5B-B03E-4948266398A9}.Debug|x64.Build.0 = Debug|Any CPU
+		{EF4E9BE1-5594-4E5B-B03E-4948266398A9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{EF4E9BE1-5594-4E5B-B03E-4948266398A9}.Debug|x86.Build.0 = Debug|Any CPU
+		{EF4E9BE1-5594-4E5B-B03E-4948266398A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EF4E9BE1-5594-4E5B-B03E-4948266398A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EF4E9BE1-5594-4E5B-B03E-4948266398A9}.Release|x64.ActiveCfg = Release|Any CPU
+		{EF4E9BE1-5594-4E5B-B03E-4948266398A9}.Release|x64.Build.0 = Release|Any CPU
+		{EF4E9BE1-5594-4E5B-B03E-4948266398A9}.Release|x86.ActiveCfg = Release|Any CPU
+		{EF4E9BE1-5594-4E5B-B03E-4948266398A9}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
