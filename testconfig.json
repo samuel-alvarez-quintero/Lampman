@@ -1,0 +1,22 @@
+{
+  "runConfiguration": {
+    "maxCpuCount": 0,
+    "resultsDirectory": "TestResults",
+    "testSessionTimeout": 1800000,
+    "collectDumpOnCrash": true
+  },
+  "dataCollection": {
+    "dataCollectors": [
+      {
+        "friendlyName": "XPlat Code Coverage",
+        "enabled": true,
+        "configuration": {
+          "format": "cobertura",
+          "includeTestAssembly": false,
+          "includeDirectory": [ "Lampman.Core", "Lampman.Cli"],
+          "exclude": [ "[xunit.*]*", "[Moq]*" ]
+        }
+      }
+    ]
+  }
+}
