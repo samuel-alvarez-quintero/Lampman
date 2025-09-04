@@ -4,10 +4,10 @@ using Lampman.Core;
 [assembly: CaptureConsole]
 [assembly: CaptureTrace]
 
-namespace Lampman.Tests;
+namespace Lampman.Tests.Integration;
 
 [Trait("Category", "Integration")]
-public class RegistryIntegrationTests
+public class RegistryCommandTests
 {
     [Fact]
     public async Task RegistryHelp_ShouldDisplayHelpInformation()

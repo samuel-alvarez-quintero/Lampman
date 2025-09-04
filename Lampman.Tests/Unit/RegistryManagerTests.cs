@@ -1,7 +1,7 @@
 using Lampman.Core;
 using Lampman.Core.Services;
 
-namespace Lampman.Tests;
+namespace Lampman.Tests.Unit;
 
 [Trait("Category", "Unit")]
 public class RegistryManagerTests
