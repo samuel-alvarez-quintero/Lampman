@@ -12,11 +12,11 @@ public class RegistryIntegrationTests
         {
             StartInfo = new ProcessStartInfo
             {
-                FileName = "lampman.exe",
-                Arguments = "registry add https://example.com/registry.json",
+                FileName = "dotnet",
+                Arguments = "lampman.dll registry add https://example.com/registry.json",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                WorkingDirectory = Path.GetTempPath()
+                WorkingDirectory = PathResolver.RootDir
             }
         };
 
