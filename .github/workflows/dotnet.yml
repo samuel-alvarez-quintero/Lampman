@@ -7,14 +7,14 @@ on:
   push:
     branches: [ "master" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "release-v[0-9]+.*" ]
 
 jobs:
   build-and-test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest]
+        os: [windows-latest, linux-latest, macos-latest]
 
     steps:
       - name: Checkout repository
