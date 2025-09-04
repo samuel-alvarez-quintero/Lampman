@@ -9,6 +9,7 @@ namespace Lampman.Tests.Integration;
 [Trait("Category", "Integration")]
 public class RegistryCommandTests
 {
+    /** Test the 'lampman registry -h' commands via command line interface **/
     [Fact]
     public async Task RegistryHelp_ShouldDisplayHelpInformation()
     {
@@ -37,6 +38,7 @@ public class RegistryCommandTests
         Assert.Contains("update", output);
     }
 
+    /** Test the 'lampman registry list' commands via command line interface **/
     [Fact]
     public async Task RegistryList_ShouldReturnRegistryEntries()
     {
@@ -61,6 +63,7 @@ public class RegistryCommandTests
         Assert.Contains(PathResolver.DefaultRegistrySource.First(), output);
     }
 
+    /** Test the 'lampman registry add' commands via command line interface **/
     [Fact]
     public async Task RegistryAdd_ShouldCreateRegistryEntry()
     {
@@ -85,6 +88,7 @@ public class RegistryCommandTests
         Assert.Contains("https://example.com/registry.json", File.ReadAllText(PathResolver.RegistryFile));
     }
 
+    /** Test the 'lampman registry remove' commands via command line interface **/
     [Fact]
     public async Task RegistryRemove_ShouldDeleteRegistryEntry()
     {
@@ -109,6 +113,7 @@ public class RegistryCommandTests
         Assert.DoesNotContain("https://example.com/registry.json", File.ReadAllText(PathResolver.RegistryFile));
     }
 
+    /** Test the 'lampman registry update' commands via command line interface **/
     [Fact]
     public async Task RegistryUpdate_ShouldFetchServices()
     {

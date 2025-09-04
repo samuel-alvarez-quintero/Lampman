@@ -13,6 +13,7 @@ public class RegistryManagerTests
         _registryManager = new RegistryManager();
     }
 
+    /** Test the 'lampman registry add' commands via RegistryManager class **/
     [Fact]
     public void RegistryAdd_ShouldCreateRegistryEntry()
     {
@@ -22,6 +23,7 @@ public class RegistryManagerTests
         Assert.Contains("https://example.com/registry.json", File.ReadAllText(PathResolver.RegistryFile));
     }
 
+    /** Test the 'lampman registry remove' commands via RegistryManager class **/
     [Fact]
     public void RegistryRemove_ShouldDeleteRegistryEntry()
     {
@@ -30,6 +32,7 @@ public class RegistryManagerTests
         Assert.DoesNotContain("https://example.com/registry.json", File.ReadAllText(PathResolver.RegistryFile));
     }
 
+    /** Test the 'lampman registry list' commands via RegistryManager class **/
     [Fact]
     public void RegistryList_ShouldDisplayRegistryEntries()
     {
@@ -50,6 +53,7 @@ public class RegistryManagerTests
         Console.SetOut(standardOutput);
     }
 
+    /** Test the 'lampman registry update' commands via RegistryManager class **/
     [Fact]
     public async Task RegistryUpdate_ShouldFetchServices()
     {
