@@ -1,3 +1,9 @@
 {
-    "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json"
+    "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+    "diagnosticMessages": true,
+    "preEnumerateTheories": true,
+    "printMaxEnumerableLength": 10,
+    "printMaxObjectDepth": 5,
+    "printMaxObjectMemberCount": 10,
+    "printMaxStringLength": 250
 }
