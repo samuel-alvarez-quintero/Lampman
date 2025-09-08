@@ -1,17 +1,31 @@
 using System.Diagnostics;
+using DotNetEnv;
 using Lampman.Core;
 using Lampman.Core.Services;
 using Lampman.Tests.TestHelpers;
 
 namespace Lampman.Tests.Integration;
 
-[Trait("Category", "Integration"), TestCaseOrderer(typeof(PriorityOrderer))]
+[Trait("Category", "Integration"), Trait("Category", "ServiceCommand"), TestCaseOrderer(typeof(PriorityOrderer))]
 public class ServiceCommandTests
+
 {
-    private readonly string serviceInput = "mariadb";
+    private readonly string[]? servicesToManage;
+
+    public ServiceCommandTests()
+    {
+        Env.TraversePath().Load();
+
+        string? services = Environment.GetEnvironmentVariable("TESTING_SERVICES_TO_MANAGE");
+
+        if (!string.IsNullOrEmpty(services))
+        {
+            servicesToManage = services.Split(';', StringSplitOptions.RemoveEmptyEntries);
+        }
+    }
 
     /** Test the 'lampman service -h' commands via command line interface **/
-    [Fact, Trait("Category", "ServiceHelpCommand"), TestPriority(4)]
+    [Fact, Trait("Category", "Command_ServiceHelp"), TestPriority(300)]
     public async Task ServiceHelp_ShouldDisplayHelpInformation()
     {
         var process = new Process
@@ -39,83 +53,98 @@ public class ServiceCommandTests
     }
 
     /** Test the 'lampman service install' commands via command line interface **/
-    [Fact, Trait("Category", "ServiceInstallCommand"), TestPriority(5)]
+    [Fact, Trait("Category", "Command_ServiceInstall"), TestPriority(301)]
     public async Task ServiceInstall_ShouldCreateServiceEntry()
     {
-        var process = new Process
+        if (null != servicesToManage && servicesToManage.Length > 0)
         {
-            StartInfo = new ProcessStartInfo
+            foreach (var service in servicesToManage)
             {
-                FileName = "dotnet",
-                Arguments = $"lampman.dll service install {serviceInput}",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WorkingDirectory = PathResolver.RootDir
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "dotnet",
+                        Arguments = $"lampman.dll service install {service}",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        WorkingDirectory = PathResolver.RootDir
+                    }
+                };
+
+                process.Start();
+                await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
+                process.WaitForExit();
+
+                var (serviceName, version, meta) = ServiceResolver.Resolve(service);
+
+                Assert.Equal(0, process.ExitCode);
+                Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
+                Assert.True(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
             }
-        };
-
-        process.Start();
-        await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-        process.WaitForExit();
-
-        var (serviceName, version, meta) = ServiceResolver.Resolve(serviceInput);
-
-        Assert.Equal(0, process.ExitCode);
-        Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
-        Assert.True(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+        }
     }
 
     /** Test the 'lampman service update' commands via command line interface **/
-    [Fact, Trait("Category", "ServiceUpdateCommand"), TestPriority(6)]
+    [Fact, Trait("Category", "Command_ServiceUpdate"), TestPriority(302)]
     public async Task ServiceUpdate_ShouldFetchServices()
     {
-        var process = new Process
+        if (null != servicesToManage && servicesToManage.Length > 0)
         {
-            StartInfo = new ProcessStartInfo
+            var firstService = servicesToManage.First();
+            var process = new Process
             {
-                FileName = "dotnet",
-                Arguments = $"lampman.dll service update {serviceInput}",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WorkingDirectory = PathResolver.RootDir
-            }
-        };
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "dotnet",
+                    Arguments = $"lampman.dll service update {firstService}",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    WorkingDirectory = PathResolver.RootDir
+                }
+            };
 
-        process.Start();
-        await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-        process.WaitForExit();
+            process.Start();
+            await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
+            process.WaitForExit();
 
-        var (serviceName, version, meta) = ServiceResolver.Resolve(serviceInput);
+            var (serviceName, version, meta) = ServiceResolver.Resolve(firstService);
 
-        Assert.Equal(0, process.ExitCode);
-        Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
-        Assert.True(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+            Assert.Equal(0, process.ExitCode);
+            Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
+            Assert.True(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+        }
     }
 
     /** Test the 'lampman service remove' commands via command line interface **/
-    [Fact, Trait("Category", "ServiceRemoveCommand"), TestPriority(7)]
+    [Fact, Trait("Category", "Command_ServiceRemove"), TestPriority(303)]
     public async Task ServiceRemove_ShouldDeleteServiceEntry()
     {
-        var process = new Process
+        if (null != servicesToManage && servicesToManage.Length > 0)
         {
-            StartInfo = new ProcessStartInfo
+            var lastService = servicesToManage.Last();
+
+            var process = new Process
             {
-                FileName = "dotnet",
-                Arguments = $"lampman.dll service remove {serviceInput}",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WorkingDirectory = PathResolver.RootDir
-            }
-        };
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "dotnet",
+                    Arguments = $"lampman.dll service remove {lastService}",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    WorkingDirectory = PathResolver.RootDir
+                }
+            };
 
-        process.Start();
-        await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-        process.WaitForExit();
+            process.Start();
+            await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
+            process.WaitForExit();
 
-        var (serviceName, version, meta) = ServiceResolver.Resolve(serviceInput);
+            var (serviceName, version, meta) = ServiceResolver.Resolve(lastService);
 
-        Assert.Equal(0, process.ExitCode);
-        Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
-        Assert.False(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+            Assert.Equal(0, process.ExitCode);
+            Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
+            Assert.False(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+        }
     }
 }

@@ -1,53 +1,80 @@
+using DotNetEnv;
 using Lampman.Core;
 using Lampman.Core.Services;
 using Lampman.Tests.TestHelpers;
 
 namespace Lampman.Tests.Unit;
 
-[Trait("Category", "Unit"), TestCaseOrderer(typeof(PriorityOrderer))]
+[Trait("Category", "Unit"), Trait("Category", "ServiceManager"), TestCaseOrderer(typeof(PriorityOrderer))]
 public class ServiceManagerTests
 {
-    private readonly string serviceInput = "php:8.2";
     private readonly ServiceManager _serviceManager;
+
+    private readonly string[]? servicesToManage;
 
     public ServiceManagerTests()
     {
+        Env.TraversePath().Load();
+
         _serviceManager = new ServiceManager();
+
+        string? services = Environment.GetEnvironmentVariable("TESTING_SERVICES_TO_MANAGE");
+
+        if (!string.IsNullOrEmpty(services))
+        {
+            servicesToManage = services.Split(';', StringSplitOptions.RemoveEmptyEntries);
+        }
     }
 
     /** Test the 'lampman service install' commands via ServiceManager class **/
-    [Fact, Trait("Category", "ServiceInstallManager"), TestPriority(1)]
+    [Fact, Trait("Category", "Manager_ServiceInstall"), TestPriority(200)]
     public async Task ServiceInstall_ShouldCreateServiceEntry()
     {
-        await _serviceManager.InstallService(serviceInput);
+        if (null != servicesToManage && servicesToManage.Length > 0)
+        {
+            foreach (var service in servicesToManage)
+            {
+                await _serviceManager.InstallService(service);
 
-        var (serviceName, version, meta) = ServiceResolver.Resolve(serviceInput);
+                var (serviceName, version, meta) = ServiceResolver.Resolve(service);
 
-        Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
-        Assert.True(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+                Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
+                Assert.True(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+            }
+        }
     }
 
     /** Test the 'lampman service update' commands via ServiceManager class **/
-    [Fact, Trait("Category", "ServiceUpdateManager"), TestPriority(2)]
+    [Fact, Trait("Category", "Manager_ServiceUpdate"), TestPriority(201)]
     public async Task ServiceUpdate_ShouldUpdateServiceEntry()
     {
-        await _serviceManager.UpdateService(serviceInput);
+        if (null != servicesToManage && servicesToManage.Length > 0)
+        {
+            var firstService = servicesToManage.First();
 
-        var (serviceName, version, meta) = ServiceResolver.Resolve(serviceInput);
+            await _serviceManager.UpdateService(firstService);
 
-        Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
-        Assert.True(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+            var (serviceName, version, meta) = ServiceResolver.Resolve(firstService);
+
+            Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
+            Assert.True(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+        }
     }
 
     /** Test the 'lampman service remove' commands via ServiceManager class **/
-    [Fact, Trait("Category", "ServiceRemoveManager"), TestPriority(3)]
+    [Fact, Trait("Category", "Manager_ServiceRemove"), TestPriority(202)]
     public void ServiceRemove_ShouldDeleteServiceEntry()
     {
-        _serviceManager.RemoveService(serviceInput);
+        if (null != servicesToManage && servicesToManage.Length > 0)
+        {
+            var lastService = servicesToManage.Last();
 
-        var (serviceName, version, meta) = ServiceResolver.Resolve(serviceInput);
+            _serviceManager.RemoveService(lastService);
 
-        Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
-        Assert.False(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+            var (serviceName, version, meta) = ServiceResolver.Resolve(lastService);
+
+            Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
+            Assert.False(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+        }
     }
 }

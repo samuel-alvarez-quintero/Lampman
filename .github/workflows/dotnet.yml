@@ -11,6 +11,10 @@ on:
 
 jobs:
   build-and-test:
+    env:
+      DEFAULT_REGISTRY_SOURCE: 'https://raw.githubusercontent.com/samuel-alvarez-quintero/Lampman/refs/heads/master/registry/MainOriginServices.json'
+      TESTING_REGISTRY_SOURCES: 'https://drive.usercontent.google.com/download?id=1ItWv6mR03MN9JjnquQ8OSMvPd72t9mAE&export=download'
+      TESTING_SERVICES_TO_MANAGE: 'php:8.2'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -32,11 +36,13 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Run tests with config
-        run: dotnet test --verbosity normal --settings testconfig.json
+        run: dotnet run --project Lampman.Tests/ -- -filter /[Category=RegistryManager]
 
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.os }}
-          path: TestResults/
+      - name: Run tests with config
+        run: dotnet run --project Lampman.Tests/ -- -filter /[Category=RegistryCommand]
+
+      - name: Run tests with config
+        run: dotnet run --project Lampman.Tests/ -- -filter /[Category=ServiceManager]
+
+      - name: Run tests with config
+        run: dotnet run --project Lampman.Tests/ -- -filter /[Category=ServiceCommand]
