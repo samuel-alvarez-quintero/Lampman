@@ -5,21 +5,22 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Http;
 using DotNetEnv;
+using Lampman.Core.Services;
+using Lampman.Core.Models;
+using System.Text.Json;
 
 namespace Lampman.Tests.Fixtures;
 
 public class MockRegistryFixture : IDisposable
 {
   public HttpClient Client { get; }
-  // private readonly IHost _host;
   private readonly WebApplication _app;
   public string TempDir { get; }
+  public string[] Services { get; } = [];
 
   public MockRegistryFixture()
   {
     Env.TraversePath().Load();
-
-    string? BaseAddress = Environment.GetEnvironmentVariable("MOCK_REGISTRY_BASE_ADDRESS");
 
     TempDir = Path.Combine(Path.GetTempPath(), "LampmanMockRegistry_" + Guid.NewGuid());
     Directory.CreateDirectory(TempDir);
@@ -29,28 +30,42 @@ public class MockRegistryFixture : IDisposable
 
     _app = builder.Build();
 
+    var baseAddress = Environment.GetEnvironmentVariable("MOCK_REGISTRY_BASE_ADDRESS");
+    baseAddress = Uri.IsWellFormedUriString(baseAddress, UriKind.Absolute) ? baseAddress : "http://localhost/";
+
+    string? servicesToManage = Environment.GetEnvironmentVariable("TESTING_SERVICES_TO_MANAGE");
+
+    if (!string.IsNullOrEmpty(servicesToManage))
+    {
+      Services = servicesToManage.Split(';', StringSplitOptions.RemoveEmptyEntries);
+    }
+
     // Registry endpoint
     _app.MapGet("/registry/main.json", async ctx =>
     {
-      string Url = "/services/php-8.2.29.zip";
+      Dictionary<string, Dictionary<string, ServiceSource>> response = [];
 
-      if (null != BaseAddress && Uri.IsWellFormedUriString(BaseAddress, UriKind.Absolute))
+      foreach (var service in Services)
       {
-        Url = $"{BaseAddress}services/php-8.2.29.zip";
+        var (serviceName, version) = ServiceResolver.Parse(service);
+        version ??= serviceName;
+
+        if (!response.ContainsKey(serviceName))
+          response[serviceName] = [];
+
+        if (!response[serviceName].ContainsKey(version))
+          response[serviceName][version] = new ServiceSource();
+
+        response[serviceName][version].Url = $"{baseAddress}services/{serviceName}-{version}.zip";
+        response[serviceName][version].Checksum = null;
+        response[serviceName][version].ExtractTo = null;
+        response[serviceName][version].ServiceProcess = null;
       }
 
-      var json = @"{
-              ""php"": {
-                ""php-8.2.29-win32-vs16-x64"": {
-                  ""Url"": """ + Url + @""",
-                  ""ExtractTo"": null,
-                  ""Checksum"": null
-                }
-              }
-            }";
+      var jsonResponse = JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true });
 
       ctx.Response.ContentType = "application/json";
-      await ctx.Response.WriteAsync(json);
+      await ctx.Response.WriteAsync(jsonResponse);
     });
 
     // Services endpoint
@@ -74,13 +89,13 @@ public class MockRegistryFixture : IDisposable
     });
 
     _app.Start();
+
     Client = _app.GetTestClient();
 
-    if (null != BaseAddress && Uri.IsWellFormedUriString(BaseAddress, UriKind.Absolute))
+    if (Uri.IsWellFormedUriString(baseAddress, UriKind.Absolute))
     {
-      Client.BaseAddress = new Uri(BaseAddress);
+      Client.BaseAddress = new Uri(baseAddress);
     }
-
   }
 
   public void Dispose()

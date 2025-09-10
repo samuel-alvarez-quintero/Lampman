@@ -42,7 +42,6 @@ public class RegistryManagerTests : IClassFixture<MockRegistryFixture>
 
             foreach (var url in registryUrls)
             {
-                Console.WriteLine($"Using registry URL: {url} -- End");
                 _registryManager.AddRegistry(url);
             }
 
@@ -93,12 +92,10 @@ public class RegistryManagerTests : IClassFixture<MockRegistryFixture>
     {
         RegistryAdd_ShouldCreateRegistryEntry();
 
-        var sources = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(PathResolver.RegistryFile));
-
-        if (null != sources)
+        // Remove all default registries
+        foreach (string sourceURL in PathResolver.DefaultRegistrySource)
         {
-            var url = sources.First();
-            _registryManager.RemoveRegistry(url);
+            _registryManager.RemoveRegistry(sourceURL);
         }
 
         await _registryManager.UpdateServices();
