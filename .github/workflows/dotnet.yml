@@ -28,6 +28,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
+      
+      - name: Restore .NET tools
+        run: dotnet tool restore
 
       - name: dotnet test with Cake
         run: dotnet cake --target Test --configuration Debug --coverage cobertura
