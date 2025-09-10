@@ -2,18 +2,23 @@ using System.Diagnostics;
 using System.Text.Json;
 using DotNetEnv;
 using Lampman.Core;
+using Lampman.Tests.Fixtures;
 using Lampman.Tests.TestHelpers;
 
 namespace Lampman.Tests.Integration;
 
 [Trait("Category", "Integration"), Trait("Category", "RegistryCommand"), TestCaseOrderer(typeof(PriorityOrderer))]
-public class RegistryCommandTests
+public class RegistryCommandTests : IClassFixture<MockRegistryFixture>
 {
     private readonly string[]? registryUrls;
 
-    public RegistryCommandTests()
+    private readonly MockRegistryFixture _fixture;
+
+    public RegistryCommandTests(MockRegistryFixture fixture)
     {
         Env.TraversePath().Load();
+
+        _fixture = fixture;
 
         string? registrySources = Environment.GetEnvironmentVariable("TESTING_REGISTRY_SOURCES");
 

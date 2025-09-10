@@ -16,8 +16,19 @@ namespace Lampman.Core.Services
         private static readonly string RegistryConfigFile = PathResolver.RegistryFile;
         private static readonly string ServicesConfigFile = PathResolver.ServicesFile;
 
-        public RegistryManager()
+        private readonly HttpClient _httpClient;
+
+        public RegistryManager(HttpClient? httpClient = null)
         {
+            _httpClient = httpClient ?? new();
+
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+            "AppleWebKit/537.36 (KHTML, like Gecko) " +
+            "Chrome/122.0 Safari/537.36");
+
+            _httpClient.DefaultRequestHeaders.Accept.ParseAdd("*/*");
+            _httpClient.DefaultRequestHeaders.Connection.Add("keep-alive");
         }
 
         private void EnsureConfig()
@@ -102,8 +113,6 @@ namespace Lampman.Core.Services
             var sources = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(RegistryConfigFile));
             var merged = new Dictionary<string, Dictionary<string, ServiceSource>>();
 
-            using var client = new HttpClient();
-
             if (sources == null || sources.Count == 0)
             {
                 Console.WriteLine($"{ANSI_YELLOW}[WARNING] No registries configured.{ANSI_RESET}");
@@ -115,7 +124,7 @@ namespace Lampman.Core.Services
                 try
                 {
                     Console.WriteLine($"{ANSI_BLUE}[INFO] Fetching {src}...{ANSI_RESET}");
-                    var json = await client.GetStringAsync(src);
+                    var json = await _httpClient.GetStringAsync(src);
 
                     var services = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, ServiceSource>>>(json);
 

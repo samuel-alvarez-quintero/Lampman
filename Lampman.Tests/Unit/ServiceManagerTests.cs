@@ -1,22 +1,27 @@
 using DotNetEnv;
 using Lampman.Core;
 using Lampman.Core.Services;
+using Lampman.Tests.Fixtures;
 using Lampman.Tests.TestHelpers;
 
 namespace Lampman.Tests.Unit;
 
 [Trait("Category", "Unit"), Trait("Category", "ServiceManager"), TestCaseOrderer(typeof(PriorityOrderer))]
-public class ServiceManagerTests
+public class ServiceManagerTests: IClassFixture<MockRegistryFixture>
 {
     private readonly ServiceManager _serviceManager;
 
     private readonly string[]? servicesToManage;
 
-    public ServiceManagerTests()
+    private readonly MockRegistryFixture _fixture;
+
+    public ServiceManagerTests(MockRegistryFixture fixture)
     {
         Env.TraversePath().Load();
 
-        _serviceManager = new ServiceManager();
+         _fixture = fixture;
+
+        _serviceManager = new ServiceManager(_fixture.Client);
 
         string? services = Environment.GetEnvironmentVariable("TESTING_SERVICES_TO_MANAGE");
 

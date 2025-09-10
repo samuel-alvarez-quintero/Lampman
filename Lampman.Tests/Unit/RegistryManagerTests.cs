@@ -2,21 +2,26 @@ using System.Text.Json;
 using DotNetEnv;
 using Lampman.Core;
 using Lampman.Core.Services;
+using Lampman.Tests.Fixtures;
 using Lampman.Tests.TestHelpers;
 
 namespace Lampman.Tests.Unit;
 
 [Trait("Category", "Unit"), Trait("Category", "RegistryManager"), TestCaseOrderer(typeof(PriorityOrderer))]
-public class RegistryManagerTests
+public class RegistryManagerTests : IClassFixture<MockRegistryFixture>
 {
     private readonly RegistryManager _registryManager;
     private readonly string[]? registryUrls;
 
-    public RegistryManagerTests()
+    private readonly MockRegistryFixture _fixture;
+
+    public RegistryManagerTests(MockRegistryFixture fixture)
     {
         Env.TraversePath().Load();
 
-        _registryManager = new RegistryManager();
+        _fixture = fixture;
+
+        _registryManager = new RegistryManager(_fixture.Client);
 
         string? registrySources = Environment.GetEnvironmentVariable("TESTING_REGISTRY_SOURCES");
 
@@ -86,6 +91,16 @@ public class RegistryManagerTests
     [Fact, Trait("Category", "Manager_RegistryUpdate"), TestPriority(3)]
     public async Task RegistryUpdate_ShouldFetchServices()
     {
+        RegistryAdd_ShouldCreateRegistryEntry();
+
+        var sources = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(PathResolver.RegistryFile));
+
+        if (null != sources)
+        {
+            var url = sources.First();
+            _registryManager.RemoveRegistry(url);
+        }
+
         await _registryManager.UpdateServices();
 
         var servicesContent = File.ReadAllText(PathResolver.ServicesFile);
