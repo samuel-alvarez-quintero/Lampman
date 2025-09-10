@@ -29,20 +29,6 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Build solution
-        run: dotnet build --configuration Release --no-restore
-
-      - name: Run tests with config
-        run: dotnet run --project Lampman.Tests/ -- -filter /[Category=RegistryManager]
-
-      - name: Run tests with config
-        run: dotnet run --project Lampman.Tests/ -- -filter /[Category=RegistryCommand]
-
-      - name: Run tests with config
-        run: dotnet run --project Lampman.Tests/ -- -filter /[Category=ServiceManager]
-
-      - name: Run tests with config
-        run: dotnet run --project Lampman.Tests/ -- -filter /[Category=ServiceCommand]
+      - name: dotnet cake
+        run: dotnet cake --target Test --configuration Debug --coverage cobertura
+        

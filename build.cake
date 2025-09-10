@@ -3,6 +3,17 @@
 //////////////////////////////////////////////////////////////////////
 
 var target = Argument("target", "Default");
+var configuration = Argument("configuration", "Debug"); // "Debug" or "Release"
+var coverage = Argument("coverage", ""); // "coverage", "xml" or "cobertura"
+
+List<string> testCategories = [
+    "Unit",
+    "RegistryManager", "Manager_RegistryAdd", "Manager_RegistryRemove", "Manager_RegistryUpdate",
+    "ServiceManager", "Manager_ServiceInstall", "Manager_ServiceUpdate", "Manager_ServiceRemove",
+    "Integration",
+    "RegistryCommand", "Command_RegistryHelp", "Command_RegistryList", "Command_RegistryAdd", "Command_RegistryRemove", "Command_RegistryUpdate",
+    "ServiceCommand", "Command_ServiceHelp", "Command_ServiceInstall", "Command_ServiceUpdate", "Command_ServiceRemove"
+];
 
 //////////////////////////////////////////////////////////////////////
 // TASKS
@@ -27,93 +38,39 @@ Task("Build")
     .IsDependentOn("Restore")
     .Does(() =>
 {
-    DotNetBuild("./Lampman.sln", new DotNetBuildSettings {
-        Configuration = "Release"
-    });
-});
-
-
-Task("Test-RegistryCommand")
-    .IsDependentOn("Build")
-    .Does(() =>
-{
-    Information("Running RegistryCommand tests...");
-
-    // Equivalent of:
-    // dotnet run --no-build --no-restore --project Lampman.Tests/ -- --filter-query /[Category=RegistryCommand] --xunit-info
-
-    StartProcess("dotnet", new ProcessSettings
+    DotNetBuild("./Lampman.sln", new DotNetBuildSettings
     {
-        Arguments = "run --no-build --no-restore --project Lampman.Tests/ -- --filter-query /[Category=RegistryCommand] " +
-                    "--xunit-info",
-        RedirectStandardOutput = false,
-        Silent = false
+        Configuration = configuration
     });
 });
 
-Task("Test-Coverage-RegistryCommand")
+foreach (var category in testCategories)
+{
+    string coverageArgs = !string.IsNullOrEmpty(coverage) ? $" --coverage --coverage-output-format cobertura --coverage-output {category}/coverage.cobertura.xml" : "";
+
+    Task($"Test-{category}")
     .IsDependentOn("Build")
     .Does(() =>
-{
-    Information("Running RegistryCommand tests with coverage...");
+    {
+        Information($"Running {category} tests... {coverage}");
 
-    // Equivalent of:
-    // dotnet run --no-build --no-restore --project Lampman.Tests/ -- --filter-query /[Category=RegistryCommand] --coverage --coverage-output-format cobertura --coverage-output RegistryCommand/coverage.cobertura.xml --xunit-info
-
-    StartProcess("dotnet", new ProcessSettings {
-        Arguments = "run --no-build --no-restore --project Lampman.Tests/ -- --filter-query /[Category=RegistryCommand] " +
-                    "--coverage --coverage-output-format cobertura " +
-                    "--coverage-output RegistryCommand/coverage.cobertura.xml " +
-                    "--xunit-info",
-        RedirectStandardOutput = false,
-        Silent = false
+        StartProcess("dotnet", new ProcessSettings
+        {
+            Arguments = $"run -c {configuration} --no-build --no-restore --project Lampman.Tests/ -- --filter-query /[Category={category}]"
+                         + " --xunit-info "
+                         + coverageArgs,
+            RedirectStandardOutput = false,
+            Silent = false
+        });
     });
-});
+}
 
-// Task("Test-Unit")
-//     .IsDependentOn("Build")
-//     .Does(() =>
-// {
-//     DotNetTest("./Lampman.Tests/Lampman.Tests.csproj", new DotNetTestSettings {
-//         Configuration = "Release",
-//         Filter = "Category=Unit",
-//         NoBuild = true
-//     });
-// });
+Task("Test")
+    .IsDependentOn("Test-Unit")
+    .IsDependentOn("Test-Integration");
 
-// Task("Test-Integration")
-//     .IsDependentOn("Build")
-//     .Does(() =>
-// {
-//     // Start mock server here if needed
-//     Information("Starting MockRegistry...");
-//     // You can call dotnet run on Lampman.MockRegistry
-
-//     DotNetTest("./Lampman.Tests/Lampman.Tests.csproj", new DotNetTestSettings {
-//         Configuration = "Release",
-//         Filter = "Category=Integration",
-//         NoBuild = true
-//     });
-
-//     // Stop mock server if started manually
-// });
-
-// Task("Pack")
-//     .IsDependentOn("Test-Unit")
-//     .IsDependentOn("Test-Integration")
-//     .Does(() =>
-// {
-//     DotNetPublish("./Lampman.Cli/Lampman.Cli.csproj", new DotNetPublishSettings {
-//         Configuration = "Release",
-//         Runtime = "win-x64",
-//         OutputDirectory = "./artifacts/win-x64"
-//     });
-
-//     Zip("./artifacts/win-x64", "./artifacts/Lampman.Cli.zip");
-// });
-
-// Task("Default")
-//     .IsDependentOn("Pack");
+Task("Default")
+    .IsDependentOn("Build");
 
 //////////////////////////////////////////////////////////////////////
 // EXECUTION
