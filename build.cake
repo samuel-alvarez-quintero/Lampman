@@ -63,6 +63,24 @@ foreach (var category in testCategories)
             Silent = false
         });
     });
+
+    if (!string.IsNullOrEmpty(coverage) && (category == "Unit" || category == "Integration"))
+    {
+        Task($"Test-{category}-Reportgenerator")
+        .IsDependentOn($"Test-{category}")
+        .Does(() =>
+        {
+            Information($"Create {category} HTML coverage report...");
+
+            StartProcess("dotnet", new ProcessSettings
+            {
+                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/{category}/coverage.cobertura.xml"
+                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/{category}/",
+                RedirectStandardOutput = false,
+                Silent = false
+            });
+        });
+    }
 }
 
 Task("Test")
