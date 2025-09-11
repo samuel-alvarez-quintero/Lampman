@@ -1,24 +1,72 @@
+using System.CommandLine;
 using Lampman.Core.Services;
 
 namespace Lampman.Cli.Commands
 {
-    public static class ServiceCommand
+    public class ServiceCommand : Command
     {
-        private static readonly ServiceManager manager = new();
+        private readonly HttpClient HttpClient;
 
-        public static void InstallExecute(string service)
+        private readonly ServiceManager Manager;
+
+        private readonly Argument<string> serviceArgument;
+
+        private readonly Command InstallCmd;
+
+        private readonly Command UpdateCmd;
+
+        private readonly Command RemoveCmd;
+
+        public ServiceCommand(string name, string? description = null, HttpClient? _httpClient = null)
+            : base(name, description)
         {
-            Task.Run(() => manager.InstallService(service)).Wait();
+            HttpClient = _httpClient ?? new();
+
+            Manager = new(HttpClient);
+
+            serviceArgument = new("service")
+            {
+                Description = "Service and version (e.g. php:8.3)"
+            };
+
+            InstallCmd = new("install", "Install a service")
+            {
+                serviceArgument
+            };
+            InstallCmd.SetAction(parseResult => InstallExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
+
+            Subcommands.Add(InstallCmd);
+
+            UpdateCmd = new("update", "Update a service")
+            {
+                serviceArgument
+            };
+            UpdateCmd.SetAction(parseResult => UpdateExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
+
+            Subcommands.Add(UpdateCmd);
+
+            RemoveCmd = new("remove", "Remove a service")
+            {
+                serviceArgument
+            };
+            RemoveCmd.SetAction(parseResult => RemoveExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
+
+            Subcommands.Add(RemoveCmd);
         }
 
-        public static void UpdateExecute(string service)
+        public void InstallExecute(string service)
         {
-            Task.Run(() => manager.UpdateService(service)).Wait();
+            Task.Run(() => Manager.InstallService(service)).Wait();
         }
 
-        public static void RemoveExecute(string service)
+        public void UpdateExecute(string service)
         {
-            manager.RemoveService(service);
+            Task.Run(() => Manager.UpdateService(service)).Wait();
+        }
+
+        public void RemoveExecute(string service)
+        {
+            Manager.RemoveService(service);
         }
     }
 }

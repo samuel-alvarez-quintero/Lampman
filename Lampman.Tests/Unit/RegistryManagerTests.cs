@@ -11,6 +11,7 @@ namespace Lampman.Tests.Unit;
 public class RegistryManagerTests : IClassFixture<MockRegistryFixture>
 {
     private readonly RegistryManager _registryManager;
+
     private readonly string[]? registryUrls;
 
     private readonly MockRegistryFixture _fixture;

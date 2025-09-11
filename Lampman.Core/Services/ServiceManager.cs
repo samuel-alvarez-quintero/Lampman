@@ -33,6 +33,9 @@ namespace Lampman.Core.Services
         {
             try
             {
+                if (!File.Exists(PathResolver.ServicesFile))
+                    throw new Exception("Local services registry not found. Run `lampman registry update` first.");
+
                 var (serviceName, version, meta) = ServiceResolver.Resolve(serviceInput);
                 var url = meta.Url;
 
