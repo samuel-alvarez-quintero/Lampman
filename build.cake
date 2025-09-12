@@ -10,9 +10,11 @@ List<string> testCategories = [
     "Unit",
     "RegistryManager", "Manager_RegistryAdd", "Manager_RegistryRemove", "Manager_RegistryUpdate",
     "ServiceManager", "Manager_ServiceInstall", "Manager_ServiceUpdate", "Manager_ServiceRemove",
+    "StackManager", "Manager_StackList", "Manager_StackStart", "Manager_StackRestart", "Manager_StackStop",
     "Integration",
     "RegistryCommand", "Command_RegistryHelp", "Command_RegistryList", "Command_RegistryAdd", "Command_RegistryRemove", "Command_RegistryUpdate",
-    "ServiceCommand", "Command_ServiceHelp", "Command_ServiceInstall", "Command_ServiceUpdate", "Command_ServiceRemove"
+    "ServiceCommand", "Command_ServiceHelp", "Command_ServiceInstall", "Command_ServiceUpdate", "Command_ServiceRemove",
+    "StackCommand", "Command_StackHelp", "Command_StackList", "Command_StackStart", "Command_StackRestart", "Command_StackStop"
 ];
 
 //////////////////////////////////////////////////////////////////////
@@ -65,36 +67,76 @@ foreach (var category in testCategories)
         });
 }
 
+Task("Test")
+    .IsDependentOn("Test_RegistryManager")
+    .IsDependentOn("Test_ServiceManager")
+    .IsDependentOn("Test_StackManager")
+    .IsDependentOn("Test_RegistryCommand")
+    .IsDependentOn("Test_ServiceCommand")
+    .IsDependentOn("Test_StackCommand");
+
 if (!string.IsNullOrEmpty(coverage))
 {
     Task("Test_With_Reportgenerator")
-        .IsDependentOn("Test_Unit")
-        .IsDependentOn("Test_Integration")
+        .IsDependentOn("Test_RegistryManager")
+        .IsDependentOn("Test_ServiceManager")
+        .IsDependentOn("Test_StackManager")
+        .IsDependentOn("Test_RegistryCommand")
+        .IsDependentOn("Test_ServiceCommand")
+        .IsDependentOn("Test_StackCommand")
         .Does(() =>
         {
             Information($"Create HTML coverage report...");
 
             StartProcess("dotnet", new ProcessSettings
             {
-                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/Unit/coverage.cobertura.xml"
-                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/Unit/",
+                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/RegistryCommand/coverage.cobertura.xml"
+                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/RegistryCommand/",
                 RedirectStandardOutput = false,
                 Silent = false
             });
 
             StartProcess("dotnet", new ProcessSettings
             {
-                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/Integration/coverage.cobertura.xml"
-                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/Integration/",
+                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/RegistryManager/coverage.cobertura.xml"
+                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/RegistryManager/",
+                RedirectStandardOutput = false,
+                Silent = false
+            });
+
+            StartProcess("dotnet", new ProcessSettings
+            {
+                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/ServiceCommand/coverage.cobertura.xml"
+                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/ServiceCommand/",
+                RedirectStandardOutput = false,
+                Silent = false
+            });
+
+            StartProcess("dotnet", new ProcessSettings
+            {
+                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/ServiceManager/coverage.cobertura.xml"
+                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/ServiceManager/",
+                RedirectStandardOutput = false,
+                Silent = false
+            });
+
+            StartProcess("dotnet", new ProcessSettings
+            {
+                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/StackCommand/coverage.cobertura.xml"
+                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/StackCommand/",
+                RedirectStandardOutput = false,
+                Silent = false
+            });
+
+            StartProcess("dotnet", new ProcessSettings
+            {
+                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/StackManager/coverage.cobertura.xml"
+                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/StackManager/",
                 RedirectStandardOutput = false,
                 Silent = false
             });
         });
 }
-
-Task("Test")
-    .IsDependentOn("Test_Unit")
-    .IsDependentOn("Test_Integration");
 
 Task("Default")
     .IsDependentOn("Build");
