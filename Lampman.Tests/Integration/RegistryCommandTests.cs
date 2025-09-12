@@ -1,6 +1,6 @@
-using System.Diagnostics;
 using System.Text.Json;
 using DotNetEnv;
+using Lampman.Cli;
 using Lampman.Core;
 using Lampman.Tests.Fixtures;
 using Lampman.Tests.TestHelpers;
@@ -14,76 +14,57 @@ public class RegistryCommandTests : IClassFixture<MockRegistryFixture>
 
     private readonly MockRegistryFixture _fixture;
 
+    private readonly LampmanApp App;
+
+    private readonly StringWriter TestingOutputWriter;
+
     public RegistryCommandTests(MockRegistryFixture fixture)
     {
         Env.TraversePath().Load();
 
         _fixture = fixture;
 
+        App = new LampmanApp(_fixture.FakeClient);
+
         string? registrySources = Environment.GetEnvironmentVariable("TESTING_REGISTRY_SOURCES");
 
         if (!string.IsNullOrEmpty(registrySources))
         {
             registryUrls = registrySources.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            registryUrls = [.. registryUrls.Select(_url => _url.Trim())];
         }
+
+        TestingOutputWriter = new();
+        Console.SetOut(TestingOutputWriter);
     }
 
     /** Test the 'lampman registry -h' commands via command line interface **/
-    [Fact, Trait("Category", "Command_RegistryHelp"), TestPriority(100)]
+    [Fact, Trait("Category", "Command_RegistryHelp"), TestPriority(300)]
     public async Task RegistryHelp_ShouldDisplayHelpInformation()
     {
-        var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "dotnet",
-                Arguments = "lampman.dll registry -h",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WorkingDirectory = PathResolver.RootDir
-            }
-        };
+        var exitCode = await App.RunAsync(["registry", "-h"]);
 
-        process.Start();
-        string output = await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-        process.WaitForExit();
-
-        Assert.Equal(0, process.ExitCode);
-        Assert.Contains("Description", output);
-        Assert.Contains("Commands", output);
-        Assert.Contains("list", output);
-        Assert.Contains("add", output);
-        Assert.Contains("remove", output);
-        Assert.Contains("update", output);
+        Assert.Equal(0, exitCode);
+        Assert.Contains("Description", TestingOutputWriter.ToString());
+        Assert.Contains("Commands", TestingOutputWriter.ToString());
+        Assert.Contains("list", TestingOutputWriter.ToString());
+        Assert.Contains("add", TestingOutputWriter.ToString());
+        Assert.Contains("remove", TestingOutputWriter.ToString());
+        Assert.Contains("update", TestingOutputWriter.ToString());
     }
 
     /** Test the 'lampman registry list' commands via command line interface **/
-    [Fact, Trait("Category", "Command_RegistryList"), TestPriority(101)]
+    [Fact, Trait("Category", "Command_RegistryList"), TestPriority(301)]
     public async Task RegistryList_ShouldReturnRegistryEntries()
     {
-        var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "dotnet",
-                Arguments = "lampman.dll registry list",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WorkingDirectory = PathResolver.RootDir
-            }
-        };
+        var exitCode = await App.RunAsync(["registry", "list"]);
 
-        process.Start();
-        string output = await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-        process.WaitForExit();
-
-        Assert.Equal(0, process.ExitCode);
-        Assert.Contains("Configured registries:", output);
-        Assert.Contains(PathResolver.DefaultRegistrySource.First(), output);
+        Assert.Equal(0, exitCode);
+        Assert.Contains("Configured registries:", TestingOutputWriter.ToString());
     }
 
-    /** Test the 'lampman registry add' commands via command line interface **/
-    [Fact, Trait("Category", "Command_RegistryAdd"), TestPriority(102)]
+    /** Test the 'lampman registry add [URL]' commands via command line interface **/
+    [Fact, Trait("Category", "Command_RegistryAdd"), TestPriority(302)]
     public async Task RegistryAdd_ShouldCreateRegistryEntry()
     {
         if (null != registryUrls && registryUrls.Length > 0)
@@ -93,24 +74,9 @@ public class RegistryCommandTests : IClassFixture<MockRegistryFixture>
 
             foreach (var url in registryUrls)
             {
-                Console.WriteLine($"Using registry URL: {url} -- End");
-                var process = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "dotnet",
-                        Arguments = $"lampman.dll registry add {url}",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        WorkingDirectory = PathResolver.RootDir
-                    }
-                };
+                var exitCode = await App.RunAsync(["registry", "add", url]);
 
-                process.Start();
-                await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-                process.WaitForExit();
-
-                Assert.Equal(0, process.ExitCode);
+                Assert.Equal(0, exitCode);
             }
 
             var sources = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(PathResolver.RegistryFile));
@@ -121,30 +87,16 @@ public class RegistryCommandTests : IClassFixture<MockRegistryFixture>
         }
     }
 
-    /** Test the 'lampman registry remove' commands via command line interface **/
-    [Fact, Trait("Category", "Command_RegistryRemove"), TestPriority(103)]
+    /** Test the 'lampman registry remove [URL]' commands via command line interface **/
+    [Fact, Trait("Category", "Command_RegistryRemove"), TestPriority(303)]
     public async Task RegistryRemove_ShouldDeleteRegistryEntry()
     {
-        if (null != registryUrls && registryUrls.Length > 0)
+        if (PathResolver.DefaultRegistrySource.Count > 0)
         {
-            var removeUrl = registryUrls.First();
-            var process = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "dotnet",
-                    Arguments = $"lampman.dll registry remove {removeUrl}",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    WorkingDirectory = PathResolver.RootDir
-                }
-            };
+            var removeUrl = PathResolver.DefaultRegistrySource.First();
+            var exitCode = await App.RunAsync(["registry", "remove", removeUrl]);
 
-            process.Start();
-            await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-            process.WaitForExit();
-
-            Assert.Equal(0, process.ExitCode);
+            Assert.Equal(0, exitCode);
             Assert.True(File.Exists(PathResolver.RegistryFile));
 
             var sources = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(PathResolver.RegistryFile));
@@ -155,26 +107,12 @@ public class RegistryCommandTests : IClassFixture<MockRegistryFixture>
     }
 
     /** Test the 'lampman registry update' commands via command line interface **/
-    [Fact, Trait("Category", "Command_RegistryUpdate"), TestPriority(104)]
+    [Fact, Trait("Category", "Command_RegistryUpdate"), TestPriority(304)]
     public async Task RegistryUpdate_ShouldFetchServices()
     {
-        var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "dotnet",
-                Arguments = "lampman.dll registry update",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WorkingDirectory = PathResolver.RootDir
-            }
-        };
+        var exitCode = await App.RunAsync(["registry", "update"]);
 
-        process.Start();
-        await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-        process.WaitForExit();
-
-        Assert.Equal(0, process.ExitCode);
+        Assert.Equal(0, exitCode);
         Assert.True(File.Exists(PathResolver.ServicesFile));
         Assert.Contains("ServiceProcess", File.ReadAllText(PathResolver.ServicesFile));
     }

@@ -22,7 +22,7 @@ public class RegistryManagerTests : IClassFixture<MockRegistryFixture>
 
         _fixture = fixture;
 
-        _registryManager = new RegistryManager(_fixture.Client);
+        _registryManager = new RegistryManager(_fixture.FakeClient);
 
         string? registrySources = Environment.GetEnvironmentVariable("TESTING_REGISTRY_SOURCES");
 

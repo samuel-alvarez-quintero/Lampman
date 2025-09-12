@@ -21,7 +21,7 @@ public class ServiceManagerTests: IClassFixture<MockRegistryFixture>
 
          _fixture = fixture;
 
-        _serviceManager = new ServiceManager(_fixture.Client);
+        _serviceManager = new ServiceManager(_fixture.FakeClient);
 
         string? services = Environment.GetEnvironmentVariable("TESTING_SERVICES_TO_MANAGE");
 
@@ -32,7 +32,7 @@ public class ServiceManagerTests: IClassFixture<MockRegistryFixture>
     }
 
     /** Test the 'lampman service install' commands via ServiceManager class **/
-    [Fact, Trait("Category", "Manager_ServiceInstall"), TestPriority(200)]
+    [Fact, Trait("Category", "Manager_ServiceInstall"), TestPriority(100)]
     public async Task ServiceInstall_ShouldCreateServiceEntry()
     {
         if (null != servicesToManage && servicesToManage.Length > 0)
@@ -50,7 +50,7 @@ public class ServiceManagerTests: IClassFixture<MockRegistryFixture>
     }
 
     /** Test the 'lampman service update' commands via ServiceManager class **/
-    [Fact, Trait("Category", "Manager_ServiceUpdate"), TestPriority(201)]
+    [Fact, Trait("Category", "Manager_ServiceUpdate"), TestPriority(101)]
     public async Task ServiceUpdate_ShouldUpdateServiceEntry()
     {
         if (null != servicesToManage && servicesToManage.Length > 0)
@@ -67,7 +67,7 @@ public class ServiceManagerTests: IClassFixture<MockRegistryFixture>
     }
 
     /** Test the 'lampman service remove' commands via ServiceManager class **/
-    [Fact, Trait("Category", "Manager_ServiceRemove"), TestPriority(202)]
+    [Fact, Trait("Category", "Manager_ServiceRemove"), TestPriority(102)]
     public void ServiceRemove_ShouldDeleteServiceEntry()
     {
         if (null != servicesToManage && servicesToManage.Length > 0)

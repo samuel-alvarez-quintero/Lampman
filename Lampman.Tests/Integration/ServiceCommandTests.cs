@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using DotNetEnv;
+using Lampman.Cli;
 using Lampman.Core;
 using Lampman.Core.Services;
 using Lampman.Tests.Fixtures;
@@ -9,11 +9,14 @@ namespace Lampman.Tests.Integration;
 
 [Trait("Category", "Integration"), Trait("Category", "ServiceCommand"), TestCaseOrderer(typeof(PriorityOrderer))]
 public class ServiceCommandTests : IClassFixture<MockRegistryFixture>
-
 {
     private readonly string[]? servicesToManage;
 
     private readonly MockRegistryFixture _fixture;
+
+    private readonly LampmanApp App;
+
+    private readonly StringWriter TestingOutputWriter;
 
     public ServiceCommandTests(MockRegistryFixture fixture)
     {
@@ -21,135 +24,88 @@ public class ServiceCommandTests : IClassFixture<MockRegistryFixture>
 
         _fixture = fixture;
 
+        App = new LampmanApp(_fixture.FakeClient);
+
         string? services = Environment.GetEnvironmentVariable("TESTING_SERVICES_TO_MANAGE");
 
         if (!string.IsNullOrEmpty(services))
         {
             servicesToManage = services.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            servicesToManage = [.. servicesToManage.Select(_service => _service.Trim())];
         }
+
+        TestingOutputWriter = new();
+        Console.SetOut(TestingOutputWriter);
     }
 
     /** Test the 'lampman service -h' commands via command line interface **/
-    [Fact, Trait("Category", "Command_ServiceHelp"), TestPriority(300)]
+    [Fact, Trait("Category", "Command_ServiceHelp"), TestPriority(400)]
     public async Task ServiceHelp_ShouldDisplayHelpInformation()
     {
-        var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "dotnet",
-                Arguments = "lampman.dll service -h",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WorkingDirectory = PathResolver.RootDir
-            }
-        };
+        var exitCode = await App.RunAsync(["service", "-h"]);
 
-        process.Start();
-        string output = await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-        process.WaitForExit();
-
-        Assert.Equal(0, process.ExitCode);
-        Assert.Contains("Description", output);
-        Assert.Contains("Commands", output);
-        Assert.Contains("install", output);
-        Assert.Contains("update", output);
-        Assert.Contains("remove", output);
+        Assert.Equal(0, exitCode);
+        Assert.Contains("Description", TestingOutputWriter.ToString());
+        Assert.Contains("Commands", TestingOutputWriter.ToString());
+        Assert.Contains("install", TestingOutputWriter.ToString());
+        Assert.Contains("update", TestingOutputWriter.ToString());
+        Assert.Contains("remove", TestingOutputWriter.ToString());
     }
 
-    /** Test the 'lampman service install' commands via command line interface **/
-    [Fact, Trait("Category", "Command_ServiceInstall"), TestPriority(301)]
+    /** Test the 'lampman service install [service-key]' commands via command line interface **/
+    [Fact, Trait("Category", "Command_ServiceInstall"), TestPriority(401)]
     public async Task ServiceInstall_ShouldCreateServiceEntry()
     {
         if (null != servicesToManage && servicesToManage.Length > 0)
         {
             foreach (var service in servicesToManage)
             {
-                var process = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "dotnet",
-                        Arguments = $"lampman.dll service install {service}",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        WorkingDirectory = PathResolver.RootDir
-                    }
-                };
+                var exitCode = await App.RunAsync(["service", "install", service]);
 
-                process.Start();
-                await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-                process.WaitForExit();
+                var (serviceName, version, _) = ServiceResolver.Resolve(service);
 
-                var (serviceName, version, meta) = ServiceResolver.Resolve(service);
-
-                Assert.Equal(0, process.ExitCode);
+                Assert.Equal(0, exitCode);
                 Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
                 Assert.True(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
             }
         }
     }
 
-    /** Test the 'lampman service update' commands via command line interface **/
-    [Fact, Trait("Category", "Command_ServiceUpdate"), TestPriority(302)]
+    /** Test the 'lampman service update [service-key]' commands via command line interface **/
+    [Fact, Trait("Category", "Command_ServiceUpdate"), TestPriority(402)]
     public async Task ServiceUpdate_ShouldFetchServices()
     {
         if (null != servicesToManage && servicesToManage.Length > 0)
         {
-            var firstService = servicesToManage.First();
-            var process = new Process
+            foreach (var service in servicesToManage)
             {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "dotnet",
-                    Arguments = $"lampman.dll service update {firstService}",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    WorkingDirectory = PathResolver.RootDir
-                }
-            };
+                var exitCode = await App.RunAsync(["service", "update", service]);
 
-            process.Start();
-            await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-            process.WaitForExit();
+                var (serviceName, version, _) = ServiceResolver.Resolve(service);
 
-            var (serviceName, version, meta) = ServiceResolver.Resolve(firstService);
-
-            Assert.Equal(0, process.ExitCode);
-            Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
-            Assert.True(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+                Assert.Equal(0, exitCode);
+                Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
+                Assert.True(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+            }
         }
     }
 
-    /** Test the 'lampman service remove' commands via command line interface **/
-    [Fact, Trait("Category", "Command_ServiceRemove"), TestPriority(303)]
+    /** Test the 'lampman service remove [service-key]'' commands via command line interface **/
+    [Fact, Trait("Category", "Command_ServiceRemove"), TestPriority(403)]
     public async Task ServiceRemove_ShouldDeleteServiceEntry()
     {
         if (null != servicesToManage && servicesToManage.Length > 0)
         {
-            var lastService = servicesToManage.Last();
-
-            var process = new Process
+            foreach (var service in servicesToManage)
             {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "dotnet",
-                    Arguments = $"lampman.dll service remove {lastService}",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    WorkingDirectory = PathResolver.RootDir
-                }
-            };
+                var exitCode = await App.RunAsync(["service", "remove", service]);
 
-            process.Start();
-            await process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-            process.WaitForExit();
+                var (serviceName, version, _) = ServiceResolver.Resolve(service);
 
-            var (serviceName, version, meta) = ServiceResolver.Resolve(lastService);
-
-            Assert.Equal(0, process.ExitCode);
-            Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
-            Assert.False(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+                Assert.Equal(0, exitCode);
+                Assert.True(Directory.Exists(PathResolver.ServicesInstallDir));
+                Assert.False(Directory.Exists(PathResolver.ServicePath(serviceName, version)));
+            }
         }
     }
 }
