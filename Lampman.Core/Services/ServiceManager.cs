@@ -14,23 +14,28 @@ namespace Lampman.Core.Services
 
         private static readonly string InstallDir = PathResolver.ServicesInstallDir;
 
-        private static readonly HttpClient httpClient = new HttpClient();
+        private readonly HttpClient _httpClient;
 
-        public ServiceManager()
+        public ServiceManager(HttpClient? httpClient = null)
         {
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
+            _httpClient = httpClient ?? new();
+
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
             "AppleWebKit/537.36 (KHTML, like Gecko) " +
             "Chrome/122.0 Safari/537.36");
 
-            httpClient.DefaultRequestHeaders.Accept.ParseAdd("*/*");
-            httpClient.DefaultRequestHeaders.Connection.Add("keep-alive");
+            _httpClient.DefaultRequestHeaders.Accept.ParseAdd("*/*");
+            _httpClient.DefaultRequestHeaders.Connection.Add("keep-alive");
         }
 
         public async Task InstallService(string serviceInput)
         {
             try
             {
+                if (!File.Exists(PathResolver.ServicesFile))
+                    throw new Exception("Local services registry not found. Run `lampman registry update` first.");
+
                 var (serviceName, version, meta) = ServiceResolver.Resolve(serviceInput);
                 var url = meta.Url;
 
@@ -106,7 +111,7 @@ namespace Lampman.Core.Services
             try
             {
                 // 1. Download the ZIP file
-                using var response = await httpClient.GetAsync(fileUrl, HttpCompletionOption.ResponseHeadersRead);
+                using var response = await _httpClient.GetAsync(fileUrl, HttpCompletionOption.ResponseHeadersRead);
                 response.EnsureSuccessStatusCode(); // Throws an exception if the HTTP response status is not a success code.
 
                 // 2. Save the downloaded stream to a local file

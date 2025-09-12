@@ -33,11 +33,4 @@ jobs:
         run: dotnet tool restore
 
       - name: dotnet test with Cake
-        run: dotnet cake --target Test --configuration Debug --coverage cobertura
-      
-      - name: Create HTML coverage Unit report
-        run: dotnet cake --target Test-Unit-Reportgenerator --configuration Debug --coverage cobertura
-
-      - name: Create HTML coverage Integration report
-        run: dotnet cake --target Test-Integration-Reportgenerator --configuration Debug --coverage cobertura
-        
+        run: dotnet cake --target Test_With_Reportgenerator --configuration Debug --coverage cobertura

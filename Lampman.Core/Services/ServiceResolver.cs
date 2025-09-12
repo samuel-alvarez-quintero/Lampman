@@ -17,9 +17,7 @@ namespace Lampman.Core.Services
                 File.ReadAllText(ServicesConfigFile));
 
             // Parse input
-            string[]? parts = input.Split(':', 2);
-            string serviceName = SlugHelper.GenerateSlug(parts[0]);
-            string? version = parts.Length > 1 ? SlugHelper.GenerateSlug(parts[1], true) : null;
+            var (serviceName, version) = Parse(input);
 
             if (services is null)
                 throw new Exception("Local services registry is empty. Run `lampman registry update` first.");
@@ -48,6 +46,15 @@ namespace Lampman.Core.Services
                 throw new Exception($"Service `{serviceName}` does not have version `{version}`.");
 
             return (serviceName, version, metadata);
+        }
+
+        public static (string serviceName, string? version) Parse(string input)
+        {
+            string[] parts = input.Split(':', 2);
+            string serviceName = SlugHelper.GenerateSlug(parts[0]);
+            string? version = parts.Length > 1 ? SlugHelper.GenerateSlug(parts[1], true) : null;
+
+            return (serviceName, version);
         }
     }
 }
