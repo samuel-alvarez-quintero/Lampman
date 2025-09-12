@@ -1,5 +1,3 @@
-using System;
-
 namespace Lampman.Tests.TestHelpers;
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]

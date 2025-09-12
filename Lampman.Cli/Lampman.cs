@@ -11,10 +11,10 @@ public class LampmanApp(HttpClient? _httpClient = null)
     {
         RootCommand rootCommand = new("Lampman CLI - Manage your local development stack");
 
-        StartCommand startCmd = new("start", "Start all or selected services", HttpClient);
-        StopCommand stopCmd = new("stop", "Stop all or selected services", HttpClient);
-        RestartCommand restartCmd = new("restart", "Restart all or selected services", HttpClient);
-        ListCommand listCmd = new("list", "List configured services", HttpClient);
+        StartCommand startCmd = new("start", "Start all or selected services");
+        StopCommand stopCmd = new("stop", "Stop all or selected services");
+        RestartCommand restartCmd = new("restart", "Restart all or selected services");
+        ListCommand listCmd = new("list", "List configured services");
 
         rootCommand.Subcommands.Add(startCmd);
         rootCommand.Subcommands.Add(stopCmd);

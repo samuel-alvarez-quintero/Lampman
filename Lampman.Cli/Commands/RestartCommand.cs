@@ -5,17 +5,13 @@ namespace Lampman.Cli.Commands;
 
 public class RestartCommand : Command
 {
-    private readonly HttpClient HttpClient;
-
     private readonly StackManager Manager = new();
 
     private readonly Argument<string[]> servicesArgument;
 
-    public RestartCommand(string name, string? description = null, HttpClient? _httpClient = null)
+    public RestartCommand(string name, string? description = null)
         : base(name, description)
     {
-        HttpClient = _httpClient ?? new();
-
         servicesArgument = new("services")
         {
             Description = "Optional list of services"

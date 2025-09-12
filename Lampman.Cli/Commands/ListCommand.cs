@@ -5,15 +5,11 @@ namespace Lampman.Cli.Commands;
 
 public class ListCommand : Command
 {
-    private readonly HttpClient HttpClient;
-
     private readonly StackManager Manager = new();
 
-    public ListCommand(string name, string? description = null, HttpClient? _httpClient = null)
+    public ListCommand(string name, string? description = null)
         : base(name, description)
     {
-        HttpClient = _httpClient ?? new();
-
         SetAction(parseResult => Execute());
     }
 

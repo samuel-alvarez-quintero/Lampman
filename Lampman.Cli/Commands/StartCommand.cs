@@ -5,17 +5,13 @@ namespace Lampman.Cli.Commands;
 
 public class StartCommand : Command
 {
-    private readonly HttpClient HttpClient;
-
     private readonly StackManager Manager = new();
 
     private readonly Argument<string[]> servicesArgument;
 
-    public StartCommand(string name, string? description = null, HttpClient? _httpClient = null)
+    public StartCommand(string name, string? description = null)
         : base(name, description)
     {
-        HttpClient = _httpClient ?? new();
-
         servicesArgument = new("services")
         {
             Description = "Optional list of services"

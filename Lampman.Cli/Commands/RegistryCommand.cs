@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Threading.Tasks;
 using Lampman.Core.Services;
 
 namespace Lampman.Cli.Commands;
