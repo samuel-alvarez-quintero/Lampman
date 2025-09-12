@@ -13,7 +13,7 @@ namespace Lampman.Tests.Fixtures;
 
 public class MockRegistryFixture : IDisposable
 {
-  public HttpClient Client { get; }
+  public HttpClient FakeClient { get; }
   private readonly WebApplication _app;
   public string TempDir { get; }
   public string[] Services { get; } = [];
@@ -41,8 +41,10 @@ public class MockRegistryFixture : IDisposable
     }
 
     // Registry endpoint
-    _app.MapGet("/registry/main.json", async ctx =>
+    _app.MapGet("/registry/{file}", async ctx =>
     {
+      var file = ctx.Request.RouteValues["file"]?.ToString() ?? "main.json";
+
       Dictionary<string, Dictionary<string, ServiceSource>> response = [];
 
       foreach (var service in Services)
@@ -90,17 +92,17 @@ public class MockRegistryFixture : IDisposable
 
     _app.Start();
 
-    Client = _app.GetTestClient();
+    FakeClient = _app.GetTestClient();
 
     if (Uri.IsWellFormedUriString(baseAddress, UriKind.Absolute))
     {
-      Client.BaseAddress = new Uri(baseAddress);
+      FakeClient.BaseAddress = new Uri(baseAddress);
     }
   }
 
   public void Dispose()
   {
-    Client.Dispose();
+    FakeClient.Dispose();
     // _app.Dispose(); // shuts down TestServer + frees resources
 
     if (Directory.Exists(TempDir))
