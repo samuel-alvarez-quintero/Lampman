@@ -58,7 +58,7 @@ foreach (var category in testCategories)
 
             StartProcess("dotnet", new ProcessSettings
             {
-                Arguments = $"run -c {configuration} --no-build --no-restore --project Lampman.Tests/ -- --filter-query /[Category={category}]"
+                Arguments = $"run -c {configuration} --no-build --no-restore --project src/Tests/ -- --filter-query /[Category={category}]"
                             + " --xunit-info "
                             + coverageArgs,
                 RedirectStandardOutput = false,
@@ -90,48 +90,48 @@ if (!string.IsNullOrEmpty(coverage))
 
             StartProcess("dotnet", new ProcessSettings
             {
-                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/RegistryCommand/coverage.cobertura.xml"
-                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/RegistryCommand/",
+                Arguments = $"reportgenerator -reports:src/Tests/bin/{configuration}/net9.0/TestResults/RegistryCommand/coverage.cobertura.xml"
+                            + $" --xunit-info -targetdir:src/Tests/bin/{configuration}/net9.0/TestResults/RegistryCommand/",
                 RedirectStandardOutput = false,
                 Silent = false
             });
 
             StartProcess("dotnet", new ProcessSettings
             {
-                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/RegistryManager/coverage.cobertura.xml"
-                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/RegistryManager/",
+                Arguments = $"reportgenerator -reports:src/Tests/bin/{configuration}/net9.0/TestResults/RegistryManager/coverage.cobertura.xml"
+                            + $" --xunit-info -targetdir:src/Tests/bin/{configuration}/net9.0/TestResults/RegistryManager/",
                 RedirectStandardOutput = false,
                 Silent = false
             });
 
             StartProcess("dotnet", new ProcessSettings
             {
-                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/ServiceCommand/coverage.cobertura.xml"
-                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/ServiceCommand/",
+                Arguments = $"reportgenerator -reports:src/Tests/bin/{configuration}/net9.0/TestResults/ServiceCommand/coverage.cobertura.xml"
+                            + $" --xunit-info -targetdir:src/Tests/bin/{configuration}/net9.0/TestResults/ServiceCommand/",
                 RedirectStandardOutput = false,
                 Silent = false
             });
 
             StartProcess("dotnet", new ProcessSettings
             {
-                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/ServiceManager/coverage.cobertura.xml"
-                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/ServiceManager/",
+                Arguments = $"reportgenerator -reports:src/Tests/bin/{configuration}/net9.0/TestResults/ServiceManager/coverage.cobertura.xml"
+                            + $" --xunit-info -targetdir:src/Tests/bin/{configuration}/net9.0/TestResults/ServiceManager/",
                 RedirectStandardOutput = false,
                 Silent = false
             });
 
             StartProcess("dotnet", new ProcessSettings
             {
-                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/StackCommand/coverage.cobertura.xml"
-                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/StackCommand/",
+                Arguments = $"reportgenerator -reports:src/Tests/bin/{configuration}/net9.0/TestResults/StackCommand/coverage.cobertura.xml"
+                            + $" --xunit-info -targetdir:src/Tests/bin/{configuration}/net9.0/TestResults/StackCommand/",
                 RedirectStandardOutput = false,
                 Silent = false
             });
 
             StartProcess("dotnet", new ProcessSettings
             {
-                Arguments = $"reportgenerator -reports:Lampman.Tests/bin/{configuration}/net9.0/TestResults/StackManager/coverage.cobertura.xml"
-                            + $" --xunit-info -targetdir:Lampman.Tests/bin/{configuration}/net9.0/TestResults/StackManager/",
+                Arguments = $"reportgenerator -reports:src/Tests/bin/{configuration}/net9.0/TestResults/StackManager/coverage.cobertura.xml"
+                            + $" --xunit-info -targetdir:src/Tests/bin/{configuration}/net9.0/TestResults/StackManager/",
                 RedirectStandardOutput = false,
                 Silent = false
             });

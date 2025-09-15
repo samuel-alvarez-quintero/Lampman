@@ -6,23 +6,23 @@ namespace Lampman.Cli.Commands;
 
 public class StartCommand : Command
 {
-    private readonly StackManager Manager = new();
+    private readonly StackManager _manager = new();
 
-    private readonly Argument<string[]> servicesArgument;
+    private readonly Argument<string[]> _servicesArgument;
 
     public StartCommand(string name, string? description = null)
         : base(name, description)
     {
-        servicesArgument = new("services")
+        _servicesArgument = new("services")
         {
             Description = "Optional list of services"
         };
 
-        SetAction(parseResult => Execute(parseResult.GetValue(servicesArgument)));
+        SetAction(parseResult => Execute(parseResult.GetValue(_servicesArgument)));
     }
 
     public void Execute(string[]? services)
     {
-        Manager.StartServices(services);
+        _manager.StartServices(services);
     }
 }

@@ -11,7 +11,7 @@ public class StackManagerTests : IClassFixture<MockRegistryFixture>
 {
     private readonly StackManager _stackManager;
 
-    private readonly string[]? servicesToManage;
+    private readonly string[]? _servicesToManage;
 
     private readonly MockRegistryFixture _fixture;
 
@@ -27,7 +27,7 @@ public class StackManagerTests : IClassFixture<MockRegistryFixture>
 
         if (!string.IsNullOrEmpty(services))
         {
-            servicesToManage = services.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            _servicesToManage = services.Split(';', StringSplitOptions.RemoveEmptyEntries);
         }
     }
 
@@ -42,9 +42,9 @@ public class StackManagerTests : IClassFixture<MockRegistryFixture>
     [Fact, Trait("Category", "Manager_StackStart"), TestPriority(201)]
     public void StackStart_ShouldRunServiceInstalled()
     {
-        if (null != servicesToManage && servicesToManage.Length > 0)
+        if (null != _servicesToManage && _servicesToManage.Length > 0)
         {
-            foreach (string service in servicesToManage)
+            foreach (string service in _servicesToManage)
             {
                 _stackManager.StartServices([service]);
             }
@@ -55,9 +55,9 @@ public class StackManagerTests : IClassFixture<MockRegistryFixture>
     [Fact, Trait("Category", "Manager_StackRestart"), TestPriority(202)]
     public void StackRestart_ShouldRestartServiceInstalled()
     {
-        if (null != servicesToManage && servicesToManage.Length > 0)
+        if (null != _servicesToManage && _servicesToManage.Length > 0)
         {
-            foreach (string service in servicesToManage)
+            foreach (string service in _servicesToManage)
             {
                 _stackManager.RestartServices([service]);
             }
@@ -68,9 +68,9 @@ public class StackManagerTests : IClassFixture<MockRegistryFixture>
     [Fact, Trait("Category", "Manager_StackStop"), TestPriority(203)]
     public void StackStop_ShouldStopServiceInstalled()
     {
-        if (null != servicesToManage && servicesToManage.Length > 0)
+        if (null != _servicesToManage && _servicesToManage.Length > 0)
         {
-            foreach (string service in servicesToManage)
+            foreach (string service in _servicesToManage)
             {
                 _stackManager.StartServices([service]);
             }

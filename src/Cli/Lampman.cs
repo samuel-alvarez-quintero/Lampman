@@ -4,9 +4,9 @@ using Lampman.Cli.Commands;
 
 namespace Lampman.Cli;
 
-public class LampmanApp(HttpClient? _httpClient = null)
+public class LampmanApp(HttpClient? httpClient = null)
 {
-    private readonly HttpClient HttpClient = _httpClient ?? new();
+    private readonly HttpClient _httpClient = httpClient ?? new();
 
     public async Task<int> RunAsync(string[] args)
     {
@@ -25,14 +25,14 @@ public class LampmanApp(HttpClient? _httpClient = null)
         /**
         * Service manager commands
         */
-        ServiceCommand serviceCmd = new("service", "Manage Lampman services", HttpClient);
+        ServiceCommand serviceCmd = new("service", "Manage Lampman services", _httpClient);
 
         rootCommand.Subcommands.Add(serviceCmd);
 
         /**
         * Registry manager commands
         */
-        RegistryCommand registryCmd = new("registry", "Manage service registries", HttpClient);
+        RegistryCommand registryCmd = new("registry", "Manage service registries", _httpClient);
 
         rootCommand.Subcommands.Add(registryCmd);
 

@@ -12,7 +12,7 @@ public class ServiceManagerTests : IClassFixture<MockRegistryFixture>
 {
     private readonly ServiceManager _serviceManager;
 
-    private readonly string[]? servicesToManage;
+    private readonly string[]? _servicesToManage;
 
     private readonly MockRegistryFixture _fixture;
 
@@ -28,7 +28,7 @@ public class ServiceManagerTests : IClassFixture<MockRegistryFixture>
 
         if (!string.IsNullOrEmpty(services))
         {
-            servicesToManage = services.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            _servicesToManage = services.Split(';', StringSplitOptions.RemoveEmptyEntries);
         }
     }
 
@@ -36,9 +36,9 @@ public class ServiceManagerTests : IClassFixture<MockRegistryFixture>
     [Fact, Trait("Category", "Manager_ServiceInstall"), TestPriority(100)]
     public async Task ServiceInstall_ShouldCreateServiceEntry()
     {
-        if (null != servicesToManage && servicesToManage.Length > 0)
+        if (null != _servicesToManage && _servicesToManage.Length > 0)
         {
-            foreach (var service in servicesToManage)
+            foreach (var service in _servicesToManage)
             {
                 await _serviceManager.InstallService(service);
 
@@ -54,9 +54,9 @@ public class ServiceManagerTests : IClassFixture<MockRegistryFixture>
     [Fact, Trait("Category", "Manager_ServiceUpdate"), TestPriority(101)]
     public async Task ServiceUpdate_ShouldUpdateServiceEntry()
     {
-        if (null != servicesToManage && servicesToManage.Length > 0)
+        if (null != _servicesToManage && _servicesToManage.Length > 0)
         {
-            var firstService = servicesToManage.First();
+            var firstService = _servicesToManage.First();
 
             await _serviceManager.UpdateService(firstService);
 
@@ -71,9 +71,9 @@ public class ServiceManagerTests : IClassFixture<MockRegistryFixture>
     [Fact, Trait("Category", "Manager_ServiceRemove"), TestPriority(102)]
     public void ServiceRemove_ShouldDeleteServiceEntry()
     {
-        if (null != servicesToManage && servicesToManage.Length > 0)
+        if (null != _servicesToManage && _servicesToManage.Length > 0)
         {
-            var lastService = servicesToManage.Last();
+            var lastService = _servicesToManage.Last();
 
             _serviceManager.RemoveService(lastService);
 

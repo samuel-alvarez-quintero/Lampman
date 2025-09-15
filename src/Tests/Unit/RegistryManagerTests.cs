@@ -14,7 +14,7 @@ public class RegistryManagerTests : IClassFixture<MockRegistryFixture>
 {
     private readonly RegistryManager _registryManager;
 
-    private readonly string[]? registryUrls;
+    private readonly string[]? _registryUrls;
 
     private readonly MockRegistryFixture _fixture;
 
@@ -30,7 +30,7 @@ public class RegistryManagerTests : IClassFixture<MockRegistryFixture>
 
         if (!string.IsNullOrEmpty(registrySources))
         {
-            registryUrls = registrySources.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            _registryUrls = registrySources.Split(';', StringSplitOptions.RemoveEmptyEntries);
         }
     }
 
@@ -38,12 +38,12 @@ public class RegistryManagerTests : IClassFixture<MockRegistryFixture>
     [Fact, Trait("Category", "Manager_RegistryAdd"), TestPriority(0)]
     public void RegistryAdd_ShouldCreateRegistryEntry()
     {
-        if (null != registryUrls && registryUrls.Length > 0)
+        if (null != _registryUrls && _registryUrls.Length > 0)
         {
             // Start with a clean registry file
             File.Delete(PathResolver.RegistryFile);
 
-            foreach (var url in registryUrls)
+            foreach (var url in _registryUrls)
             {
                 _registryManager.AddRegistry(url);
             }
@@ -51,7 +51,7 @@ public class RegistryManagerTests : IClassFixture<MockRegistryFixture>
             var sources = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(PathResolver.RegistryFile));
 
             if (null != sources)
-                foreach (var url in registryUrls)
+                foreach (var url in _registryUrls)
                     Assert.Contains(url, sources);
         }
     }
@@ -60,9 +60,9 @@ public class RegistryManagerTests : IClassFixture<MockRegistryFixture>
     [Fact, Trait("Category", "Manager_RegistryRemove"), TestPriority(1)]
     public void RegistryRemove_ShouldDeleteRegistryEntry()
     {
-        if (null != registryUrls && registryUrls.Length > 0)
+        if (null != _registryUrls && _registryUrls.Length > 0)
         {
-            var url = registryUrls.First();
+            var url = _registryUrls.First();
             _registryManager.RemoveRegistry(url);
             Assert.DoesNotContain(url, File.ReadAllText(PathResolver.RegistryFile));
         }

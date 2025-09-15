@@ -15,9 +15,9 @@ public class ServiceCommandTests : IClassFixture<MockRegistryFixture>
 
     private readonly MockRegistryFixture _fixture;
 
-    private readonly LampmanApp App;
+    private readonly LampmanApp _app;
 
-    private readonly StringWriter TestingOutputWriter;
+    private readonly StringWriter _testingOutputWriter;
 
     public ServiceCommandTests(MockRegistryFixture fixture)
     {
@@ -25,7 +25,7 @@ public class ServiceCommandTests : IClassFixture<MockRegistryFixture>
 
         _fixture = fixture;
 
-        App = new LampmanApp(_fixture.FakeClient);
+        _app = new LampmanApp(_fixture.FakeClient);
 
         string? services = Environment.GetEnvironmentVariable("TESTING_SERVICES_TO_MANAGE");
 
@@ -35,22 +35,22 @@ public class ServiceCommandTests : IClassFixture<MockRegistryFixture>
             servicesToManage = [.. servicesToManage.Select(_service => _service.Trim())];
         }
 
-        TestingOutputWriter = new();
-        Console.SetOut(TestingOutputWriter);
+        _testingOutputWriter = new();
+        Console.SetOut(_testingOutputWriter);
     }
 
     /** Test the 'lampman service -h' commands via command line interface **/
     [Fact, Trait("Category", "Command_ServiceHelp"), TestPriority(400)]
     public async Task ServiceHelp_ShouldDisplayHelpInformation()
     {
-        var exitCode = await App.RunAsync(["service", "-h"]);
+        var exitCode = await _app.RunAsync(["service", "-h"]);
 
         Assert.Equal(0, exitCode);
-        Assert.Contains("Description", TestingOutputWriter.ToString());
-        Assert.Contains("Commands", TestingOutputWriter.ToString());
-        Assert.Contains("install", TestingOutputWriter.ToString());
-        Assert.Contains("update", TestingOutputWriter.ToString());
-        Assert.Contains("remove", TestingOutputWriter.ToString());
+        Assert.Contains("Description", _testingOutputWriter.ToString());
+        Assert.Contains("Commands", _testingOutputWriter.ToString());
+        Assert.Contains("install", _testingOutputWriter.ToString());
+        Assert.Contains("update", _testingOutputWriter.ToString());
+        Assert.Contains("remove", _testingOutputWriter.ToString());
     }
 
     /** Test the 'lampman service install [service-key]' commands via command line interface **/
@@ -61,7 +61,7 @@ public class ServiceCommandTests : IClassFixture<MockRegistryFixture>
         {
             foreach (var service in servicesToManage)
             {
-                var exitCode = await App.RunAsync(["service", "install", service]);
+                var exitCode = await _app.RunAsync(["service", "install", service]);
 
                 var (serviceName, version, _) = ServiceResolver.Resolve(service);
 
@@ -80,7 +80,7 @@ public class ServiceCommandTests : IClassFixture<MockRegistryFixture>
         {
             foreach (var service in servicesToManage)
             {
-                var exitCode = await App.RunAsync(["service", "update", service]);
+                var exitCode = await _app.RunAsync(["service", "update", service]);
 
                 var (serviceName, version, _) = ServiceResolver.Resolve(service);
 
@@ -99,7 +99,7 @@ public class ServiceCommandTests : IClassFixture<MockRegistryFixture>
         {
             foreach (var service in servicesToManage)
             {
-                var exitCode = await App.RunAsync(["service", "remove", service]);
+                var exitCode = await _app.RunAsync(["service", "remove", service]);
 
                 var (serviceName, version, _) = ServiceResolver.Resolve(service);
 

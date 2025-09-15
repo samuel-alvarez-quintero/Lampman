@@ -10,7 +10,7 @@
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/Lampman.Cli/bin/Debug/net9.0/lampman.dll",
+            "program": "${workspaceFolder}/src/Cli/bin/Debug/net9.0/lampman.dll",
             "args": [],
             "cwd": "${workspaceFolder}/Lampman.Cli",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
@@ -26,7 +26,7 @@
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/Lampman.Cli/bin/Debug/net9.0/lampman.dll",
+            "program": "${workspaceFolder}/src/Cli/bin/Debug/net9.0/lampman.dll",
             "args": [
                 "service",
                 "install",

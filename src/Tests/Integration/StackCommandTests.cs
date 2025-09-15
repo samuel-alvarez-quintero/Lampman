@@ -13,9 +13,9 @@ public class StackCommandTests : IClassFixture<MockRegistryFixture>
 
     private readonly MockRegistryFixture _fixture;
 
-    private readonly LampmanApp App;
+    private readonly LampmanApp _app;
 
-    private readonly StringWriter TestingOutputWriter;
+    private readonly StringWriter _testingOutputWriter;
 
     public StackCommandTests(MockRegistryFixture fixture)
     {
@@ -23,7 +23,7 @@ public class StackCommandTests : IClassFixture<MockRegistryFixture>
 
         _fixture = fixture;
 
-        App = new LampmanApp(_fixture.FakeClient);
+        _app = new LampmanApp(_fixture.FakeClient);
 
         string? services = Environment.GetEnvironmentVariable("TESTING_SERVICES_TO_MANAGE");
 
@@ -33,33 +33,33 @@ public class StackCommandTests : IClassFixture<MockRegistryFixture>
             servicesToManage = [.. servicesToManage.Select(_service => _service.Trim())];
         }
 
-        TestingOutputWriter = new();
-        Console.SetOut(TestingOutputWriter);
+        _testingOutputWriter = new();
+        Console.SetOut(_testingOutputWriter);
     }
 
     /** Test the 'lampman -h' commands via command line interface **/
     [Fact, Trait("Category", "Command_StackHelp"), TestPriority(500)]
     public async Task StackHelp_ShouldDisplayHelpInformation()
     {
-        var exitCode = await App.RunAsync(["-h"]);
+        var exitCode = await _app.RunAsync(["-h"]);
 
         Assert.Equal(0, exitCode);
-        Assert.Contains("Description", TestingOutputWriter.ToString());
-        Assert.Contains("Lampman CLI - Manage your local development stack", TestingOutputWriter.ToString());
-        Assert.Contains("Commands", TestingOutputWriter.ToString());
-        Assert.Contains("start", TestingOutputWriter.ToString());
-        Assert.Contains("stop", TestingOutputWriter.ToString());
-        Assert.Contains("restart", TestingOutputWriter.ToString());
-        Assert.Contains("list", TestingOutputWriter.ToString());
-        Assert.Contains("service", TestingOutputWriter.ToString());
-        Assert.Contains("registry", TestingOutputWriter.ToString());
+        Assert.Contains("Description", _testingOutputWriter.ToString());
+        Assert.Contains("Lampman CLI - Manage your local development stack", _testingOutputWriter.ToString());
+        Assert.Contains("Commands", _testingOutputWriter.ToString());
+        Assert.Contains("start", _testingOutputWriter.ToString());
+        Assert.Contains("stop", _testingOutputWriter.ToString());
+        Assert.Contains("restart", _testingOutputWriter.ToString());
+        Assert.Contains("list", _testingOutputWriter.ToString());
+        Assert.Contains("service", _testingOutputWriter.ToString());
+        Assert.Contains("registry", _testingOutputWriter.ToString());
     }
 
     /** Test the 'lampman list' commands via command line interface **/
     [Fact, Trait("Category", "Command_StackList"), TestPriority(501)]
     public async Task StackList_ShouldDisplayServicesListing()
     {
-        var exitCode = await App.RunAsync(["list"]);
+        var exitCode = await _app.RunAsync(["list"]);
 
         Assert.Equal(0, exitCode);
     }
@@ -72,7 +72,7 @@ public class StackCommandTests : IClassFixture<MockRegistryFixture>
         {
             foreach (var service in servicesToManage)
             {
-                var exitCode = await App.RunAsync(["start", service]);
+                var exitCode = await _app.RunAsync(["start", service]);
 
                 // Return an error code because the service is not installed
                 Assert.Equal(1, exitCode);
@@ -88,7 +88,7 @@ public class StackCommandTests : IClassFixture<MockRegistryFixture>
         {
             foreach (var service in servicesToManage)
             {
-                var exitCode = await App.RunAsync(["restart", service]);
+                var exitCode = await _app.RunAsync(["restart", service]);
 
                 // Return an error code because the service is not installed
                 Assert.Equal(1, exitCode);
@@ -104,7 +104,7 @@ public class StackCommandTests : IClassFixture<MockRegistryFixture>
         {
             foreach (var service in servicesToManage)
             {
-                var exitCode = await App.RunAsync(["stop", service]);
+                var exitCode = await _app.RunAsync(["stop", service]);
 
                 // Return an error code because the service is not installed
                 Assert.Equal(1, exitCode);

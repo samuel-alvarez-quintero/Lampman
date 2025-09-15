@@ -12,13 +12,13 @@ namespace Lampman.Tests.Integration;
 [Trait("Category", "Integration"), Trait("Category", "RegistryCommand"), TestCaseOrderer(typeof(PriorityOrderer))]
 public class RegistryCommandTests : IClassFixture<MockRegistryFixture>
 {
-    private readonly string[]? registryUrls;
+    private readonly string[]? _registryUrls;
 
     private readonly MockRegistryFixture _fixture;
 
-    private readonly LampmanApp App;
+    private readonly LampmanApp _app;
 
-    private readonly StringWriter TestingOutputWriter;
+    private readonly StringWriter _testingOutputWriter;
 
     public RegistryCommandTests(MockRegistryFixture fixture)
     {
@@ -26,57 +26,57 @@ public class RegistryCommandTests : IClassFixture<MockRegistryFixture>
 
         _fixture = fixture;
 
-        App = new LampmanApp(_fixture.FakeClient);
+        _app = new LampmanApp(_fixture.FakeClient);
 
         string? registrySources = Environment.GetEnvironmentVariable("TESTING_REGISTRY_SOURCES");
 
         if (!string.IsNullOrEmpty(registrySources))
         {
-            registryUrls = registrySources.Split(';', StringSplitOptions.RemoveEmptyEntries);
-            registryUrls = [.. registryUrls.Select(_url => _url.Trim())];
+            _registryUrls = registrySources.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            _registryUrls = [.. _registryUrls.Select(_url => _url.Trim())];
         }
 
-        TestingOutputWriter = new();
-        Console.SetOut(TestingOutputWriter);
+        _testingOutputWriter = new();
+        Console.SetOut(_testingOutputWriter);
     }
 
     /** Test the 'lampman registry -h' commands via command line interface **/
     [Fact, Trait("Category", "Command_RegistryHelp"), TestPriority(300)]
     public async Task RegistryHelp_ShouldDisplayHelpInformation()
     {
-        var exitCode = await App.RunAsync(["registry", "-h"]);
+        var exitCode = await _app.RunAsync(["registry", "-h"]);
 
         Assert.Equal(0, exitCode);
-        Assert.Contains("Description", TestingOutputWriter.ToString());
-        Assert.Contains("Commands", TestingOutputWriter.ToString());
-        Assert.Contains("list", TestingOutputWriter.ToString());
-        Assert.Contains("add", TestingOutputWriter.ToString());
-        Assert.Contains("remove", TestingOutputWriter.ToString());
-        Assert.Contains("update", TestingOutputWriter.ToString());
+        Assert.Contains("Description", _testingOutputWriter.ToString());
+        Assert.Contains("Commands", _testingOutputWriter.ToString());
+        Assert.Contains("list", _testingOutputWriter.ToString());
+        Assert.Contains("add", _testingOutputWriter.ToString());
+        Assert.Contains("remove", _testingOutputWriter.ToString());
+        Assert.Contains("update", _testingOutputWriter.ToString());
     }
 
     /** Test the 'lampman registry list' commands via command line interface **/
     [Fact, Trait("Category", "Command_RegistryList"), TestPriority(301)]
     public async Task RegistryList_ShouldReturnRegistryEntries()
     {
-        var exitCode = await App.RunAsync(["registry", "list"]);
+        var exitCode = await _app.RunAsync(["registry", "list"]);
 
         Assert.Equal(0, exitCode);
-        Assert.Contains("Configured registries:", TestingOutputWriter.ToString());
+        Assert.Contains("Configured registries:", _testingOutputWriter.ToString());
     }
 
     /** Test the 'lampman registry add [URL]' commands via command line interface **/
     [Fact, Trait("Category", "Command_RegistryAdd"), TestPriority(302)]
     public async Task RegistryAdd_ShouldCreateRegistryEntry()
     {
-        if (null != registryUrls && registryUrls.Length > 0)
+        if (null != _registryUrls && _registryUrls.Length > 0)
         {
             // Start with a clean registry file
             File.Delete(PathResolver.RegistryFile);
 
-            foreach (var url in registryUrls)
+            foreach (var url in _registryUrls)
             {
-                var exitCode = await App.RunAsync(["registry", "add", url]);
+                var exitCode = await _app.RunAsync(["registry", "add", url]);
 
                 Assert.Equal(0, exitCode);
             }
@@ -84,7 +84,7 @@ public class RegistryCommandTests : IClassFixture<MockRegistryFixture>
             var sources = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(PathResolver.RegistryFile));
 
             if (null != sources)
-                foreach (var url in registryUrls)
+                foreach (var url in _registryUrls)
                     Assert.Contains(url, sources);
         }
     }
@@ -96,7 +96,7 @@ public class RegistryCommandTests : IClassFixture<MockRegistryFixture>
         if (PathResolver.DefaultRegistrySource.Count > 0)
         {
             var removeUrl = PathResolver.DefaultRegistrySource.First();
-            var exitCode = await App.RunAsync(["registry", "remove", removeUrl]);
+            var exitCode = await _app.RunAsync(["registry", "remove", removeUrl]);
 
             Assert.Equal(0, exitCode);
             Assert.True(File.Exists(PathResolver.RegistryFile));
@@ -112,7 +112,7 @@ public class RegistryCommandTests : IClassFixture<MockRegistryFixture>
     [Fact, Trait("Category", "Command_RegistryUpdate"), TestPriority(304)]
     public async Task RegistryUpdate_ShouldFetchServices()
     {
-        var exitCode = await App.RunAsync(["registry", "update"]);
+        var exitCode = await _app.RunAsync(["registry", "update"]);
 
         Assert.Equal(0, exitCode);
         Assert.True(File.Exists(PathResolver.ServicesFile));

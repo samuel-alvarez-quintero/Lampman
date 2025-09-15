@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Lampman.Core\Lampman.Core.csproj" />
+    <ProjectReference Include="..\Core\Lampman.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

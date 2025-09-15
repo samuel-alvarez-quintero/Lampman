@@ -6,7 +6,7 @@ namespace Lampman.Cli.Commands;
 
 public class ListCommand : Command
 {
-    private readonly StackManager Manager = new();
+    private readonly StackManager _manager = new();
 
     public ListCommand(string name, string? description = null)
         : base(name, description)
@@ -14,8 +14,8 @@ public class ListCommand : Command
         SetAction(parseResult => Execute());
     }
 
-    public void Execute()
+    private void Execute()
     {
-        Manager.ListServices();
+        _manager.ListServices();
     }
 }

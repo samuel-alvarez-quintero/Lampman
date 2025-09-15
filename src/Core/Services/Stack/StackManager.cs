@@ -15,13 +15,13 @@ public class StackManager
     const string ANSI_RESET = "\u001B[0m"; // Resets all formatting
 
     private readonly StackConfig _config;
-    private readonly Dictionary<string, StackProcess> _processes = new();
+    private readonly Dictionary<string, StackProcess> _processes = [];
 
     public StackManager()
     {
-        var StackconfigFile = PathResolver.StackFile;
+        var stackconfigFile = PathResolver.StackFile;
 
-        if (!File.Exists(StackconfigFile))
+        if (!File.Exists(stackconfigFile))
         {
             Console.WriteLine($"{ANSI_BLUE}[INFO] No config file found. Creating default stack.json...{ANSI_RESET}");
 
@@ -35,10 +35,10 @@ public class StackManager
                 WriteIndented = true
             });
 
-            File.WriteAllText(StackconfigFile, json);
+            File.WriteAllText(stackconfigFile, json);
         }
 
-        var fileContent = File.ReadAllText(StackconfigFile);
+        var fileContent = File.ReadAllText(stackconfigFile);
         _config = JsonSerializer.Deserialize<StackConfig>(fileContent)!;
     }
 
