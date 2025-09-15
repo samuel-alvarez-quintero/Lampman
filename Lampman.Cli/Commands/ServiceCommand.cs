@@ -1,72 +1,72 @@
 using System.CommandLine;
+
 using Lampman.Core.Services;
 
-namespace Lampman.Cli.Commands
+namespace Lampman.Cli.Commands;
+
+public class ServiceCommand : Command
 {
-    public class ServiceCommand : Command
+    private readonly HttpClient HttpClient;
+
+    private readonly ServiceManager Manager;
+
+    private readonly Argument<string> serviceArgument;
+
+    private readonly Command InstallCmd;
+
+    private readonly Command UpdateCmd;
+
+    private readonly Command RemoveCmd;
+
+    public ServiceCommand(string name, string? description = null, HttpClient? _httpClient = null)
+        : base(name, description)
     {
-        private readonly HttpClient HttpClient;
+        HttpClient = _httpClient ?? new();
 
-        private readonly ServiceManager Manager;
+        Manager = new(HttpClient);
 
-        private readonly Argument<string> serviceArgument;
-
-        private readonly Command InstallCmd;
-
-        private readonly Command UpdateCmd;
-
-        private readonly Command RemoveCmd;
-
-        public ServiceCommand(string name, string? description = null, HttpClient? _httpClient = null)
-            : base(name, description)
+        serviceArgument = new("service")
         {
-            HttpClient = _httpClient ?? new();
+            Description = "Service and version (e.g. php:8.3)"
+        };
 
-            Manager = new(HttpClient);
+        InstallCmd = new("install", "Install a service")
+        {
+            serviceArgument
+        };
+        InstallCmd.SetAction(parseResult => InstallExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
 
-            serviceArgument = new("service")
-            {
-                Description = "Service and version (e.g. php:8.3)"
-            };
+        Subcommands.Add(InstallCmd);
 
-            InstallCmd = new("install", "Install a service")
-            {
-                serviceArgument
-            };
-            InstallCmd.SetAction(parseResult => InstallExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
+        UpdateCmd = new("update", "Update a service")
+        {
+            serviceArgument
+        };
+        UpdateCmd.SetAction(parseResult => UpdateExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
 
-            Subcommands.Add(InstallCmd);
+        Subcommands.Add(UpdateCmd);
 
-            UpdateCmd = new("update", "Update a service")
+        RemoveCmd = new("remove", "Remove a service")
             {
                 serviceArgument
             };
-            UpdateCmd.SetAction(parseResult => UpdateExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
+        RemoveCmd.SetAction(parseResult => RemoveExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
 
-            Subcommands.Add(UpdateCmd);
+        Subcommands.Add(RemoveCmd);
+    }
 
-            RemoveCmd = new("remove", "Remove a service")
-            {
-                serviceArgument
-            };
-            RemoveCmd.SetAction(parseResult => RemoveExecute(parseResult.GetValue(serviceArgument) ?? string.Empty));
+    public void InstallExecute(string service)
+    {
+        Task.Run(() => Manager.InstallService(service)).Wait();
+    }
 
-            Subcommands.Add(RemoveCmd);
-        }
+    public void UpdateExecute(string service)
+    {
+        Task.Run(() => Manager.UpdateService(service)).Wait();
+    }
 
-        public void InstallExecute(string service)
-        {
-            Task.Run(() => Manager.InstallService(service)).Wait();
-        }
-
-        public void UpdateExecute(string service)
-        {
-            Task.Run(() => Manager.UpdateService(service)).Wait();
-        }
-
-        public void RemoveExecute(string service)
-        {
-            Manager.RemoveService(service);
-        }
+    public void RemoveExecute(string service)
+    {
+        Manager.RemoveService(service);
     }
 }

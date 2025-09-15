@@ -1,7 +1,6 @@
-namespace Lampman.Core.Models
+namespace Lampman.Core.Models;
+
+public class StackConfig
 {
-    public class StackConfig
-    {
-        public List<ServiceProcess> Services { get; set; } = new();
-    }
+    public List<ServiceProcess> Services { get; set; } = new();
 }

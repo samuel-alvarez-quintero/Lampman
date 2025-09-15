@@ -1,4 +1,5 @@
 using DotNetEnv;
+
 using Lampman.Core;
 using Lampman.Core.Services;
 using Lampman.Tests.Fixtures;
@@ -7,7 +8,7 @@ using Lampman.Tests.TestHelpers;
 namespace Lampman.Tests.Unit;
 
 [Trait("Category", "Unit"), Trait("Category", "ServiceManager"), TestCaseOrderer(typeof(PriorityOrderer))]
-public class ServiceManagerTests: IClassFixture<MockRegistryFixture>
+public class ServiceManagerTests : IClassFixture<MockRegistryFixture>
 {
     private readonly ServiceManager _serviceManager;
 
@@ -19,7 +20,7 @@ public class ServiceManagerTests: IClassFixture<MockRegistryFixture>
     {
         Env.TraversePath().Load();
 
-         _fixture = fixture;
+        _fixture = fixture;
 
         _serviceManager = new ServiceManager(_fixture.FakeClient);
 

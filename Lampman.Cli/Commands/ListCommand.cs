@@ -1,4 +1,5 @@
 using System.CommandLine;
+
 using Lampman.Core.Services;
 
 namespace Lampman.Cli.Commands;
@@ -18,4 +19,3 @@ public class ListCommand : Command
         Manager.ListServices();
     }
 }
-

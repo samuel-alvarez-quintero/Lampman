@@ -1,4 +1,5 @@
 using System.CommandLine;
+
 using Lampman.Core.Services;
 
 namespace Lampman.Cli.Commands;
@@ -25,4 +26,3 @@ public class StopCommand : Command
         Manager.StopServices(services);
     }
 }
-

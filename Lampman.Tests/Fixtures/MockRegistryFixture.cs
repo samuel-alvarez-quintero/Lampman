@@ -1,117 +1,120 @@
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Hosting;
-using Microsoft.AspNetCore.Http;
-using DotNetEnv;
-using Lampman.Core.Services;
-using Lampman.Core.Models;
 using System.Text.Json;
+
+using DotNetEnv;
+
+using Lampman.Core.Models;
+using Lampman.Core.Services;
 using Lampman.Tests.TestHelpers;
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Hosting;
 
 namespace Lampman.Tests.Fixtures;
 
 public class MockRegistryFixture : IDisposable
 {
-  public HttpClient FakeClient { get; }
-  private readonly WebApplication _app;
-  public string TempDir { get; }
-  public string[] Services { get; } = [];
+    public HttpClient FakeClient { get; }
+    private readonly WebApplication _app;
+    public string TempDir { get; }
+    public string[] Services { get; } = [];
 
-  public MockRegistryFixture()
-  {
-    Env.TraversePath().Load();
-
-    TempDir = Path.Combine(Path.GetTempPath(), "LampmanMockRegistry_" + Guid.NewGuid());
-    Directory.CreateDirectory(TempDir);
-
-    var builder = WebApplication.CreateBuilder();
-    builder.WebHost.UseTestServer();
-
-    _app = builder.Build();
-
-    var baseAddress = Environment.GetEnvironmentVariable("MOCK_REGISTRY_BASE_ADDRESS");
-    baseAddress = Uri.IsWellFormedUriString(baseAddress, UriKind.Absolute) ? baseAddress : "http://localhost/";
-
-    string? servicesToManage = Environment.GetEnvironmentVariable("TESTING_SERVICES_TO_MANAGE");
-
-    if (!string.IsNullOrEmpty(servicesToManage))
+    public MockRegistryFixture()
     {
-      Services = servicesToManage.Split(';', StringSplitOptions.RemoveEmptyEntries);
-    }
+        Env.TraversePath().Load();
 
-    // Registry endpoint
-    _app.MapGet("/registry/{file}", async ctx =>
-    {
-      var file = ctx.Request.RouteValues["file"]?.ToString() ?? "main.json";
+        TempDir = Path.Combine(Path.GetTempPath(), "LampmanMockRegistry_" + Guid.NewGuid());
+        Directory.CreateDirectory(TempDir);
 
-      Dictionary<string, Dictionary<string, ServiceSource>> response = [];
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
 
-      foreach (var service in Services)
-      {
-        var (serviceName, version) = ServiceResolver.Parse(service);
-        version ??= serviceName;
+        _app = builder.Build();
 
-        if (!response.ContainsKey(serviceName))
-          response[serviceName] = [];
+        var baseAddress = Environment.GetEnvironmentVariable("MOCK_REGISTRY_BASE_ADDRESS");
+        baseAddress = Uri.IsWellFormedUriString(baseAddress, UriKind.Absolute) ? baseAddress : "http://localhost/";
 
-        if (!response[serviceName].ContainsKey(version))
+        string? servicesToManage = Environment.GetEnvironmentVariable("TESTING_SERVICES_TO_MANAGE");
+
+        if (!string.IsNullOrEmpty(servicesToManage))
         {
-          string serviceZipFileName = $"{serviceName}-{version}.zip";
-          var serviceZipPath = Path.Combine(TempDir, serviceZipFileName);
-
-          await FakeFile.CreateZipServiceFile(serviceZipPath);
-
-          string fakeChecksum = await FakeFile.GetSha256ChecksumAsync(serviceZipPath);
-
-          response[serviceName][version] = new ServiceSource()
-          {
-            Url = $"{baseAddress}services/{serviceZipFileName}",
-            Checksum = new Dictionary<string, string> { { "SHA256", fakeChecksum } },
-            ExtractTo = null,
-            ServiceProcess = new ServiceProcess()
-            {
-              Name = serviceName,
-              Version = version,
-            }
-          };
+            Services = servicesToManage.Split(';', StringSplitOptions.RemoveEmptyEntries);
         }
-      }
 
-      var jsonResponse = JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true });
+        // Registry endpoint
+        _app.MapGet("/registry/{file}", async ctx =>
+        {
+            var file = ctx.Request.RouteValues["file"]?.ToString() ?? "main.json";
 
-      ctx.Response.ContentType = "application/json";
-      await ctx.Response.WriteAsync(jsonResponse);
-    });
+            Dictionary<string, Dictionary<string, ServiceSource>> response = [];
 
-    // Services endpoint
-    _app.MapGet("/services/{file}", async ctx =>
-    {
-      var file = ctx.Request.RouteValues["file"]?.ToString() ?? "default.zip";
-      var zipPath = Path.Combine(TempDir, file);
+            foreach (var service in Services)
+            {
+                var (serviceName, version) = ServiceResolver.Parse(service);
+                version ??= serviceName;
 
-      await FakeFile.CreateZipServiceFile(zipPath);
+                if (!response.ContainsKey(serviceName))
+                    response[serviceName] = [];
 
-      ctx.Response.ContentType = "application/zip";
-      await ctx.Response.SendFileAsync(zipPath);
-    });
+                if (!response[serviceName].ContainsKey(version))
+                {
+                    string serviceZipFileName = $"{serviceName}-{version}.zip";
+                    var serviceZipPath = Path.Combine(TempDir, serviceZipFileName);
 
-    _app.Start();
+                    await FakeFile.CreateZipServiceFile(serviceZipPath);
 
-    FakeClient = _app.GetTestClient();
+                    string fakeChecksum = await FakeFile.GetSha256ChecksumAsync(serviceZipPath);
 
-    if (Uri.IsWellFormedUriString(baseAddress, UriKind.Absolute))
-    {
-      FakeClient.BaseAddress = new Uri(baseAddress);
+                    response[serviceName][version] = new ServiceSource()
+                    {
+                        Url = $"{baseAddress}services/{serviceZipFileName}",
+                        Checksum = new Dictionary<string, string> { { "SHA256", fakeChecksum } },
+                        ExtractTo = null,
+                        ServiceProcess = new ServiceProcess()
+                        {
+                            Name = serviceName,
+                            Version = version,
+                        }
+                    };
+                }
+            }
+
+            var jsonResponse = JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true });
+
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsync(jsonResponse);
+        });
+
+        // Services endpoint
+        _app.MapGet("/services/{file}", async ctx =>
+        {
+            var file = ctx.Request.RouteValues["file"]?.ToString() ?? "default.zip";
+            var zipPath = Path.Combine(TempDir, file);
+
+            await FakeFile.CreateZipServiceFile(zipPath);
+
+            ctx.Response.ContentType = "application/zip";
+            await ctx.Response.SendFileAsync(zipPath);
+        });
+
+        _app.Start();
+
+        FakeClient = _app.GetTestClient();
+
+        if (Uri.IsWellFormedUriString(baseAddress, UriKind.Absolute))
+        {
+            FakeClient.BaseAddress = new Uri(baseAddress);
+        }
     }
-  }
 
-  public void Dispose()
-  {
-    FakeClient.Dispose();
-    // _app.Dispose(); // shuts down TestServer + frees resources
+    public void Dispose()
+    {
+        FakeClient.Dispose();
+        // _app.Dispose(); // shuts down TestServer + frees resources
 
-    if (Directory.Exists(TempDir))
-      Directory.Delete(TempDir, recursive: true);
-  }
+        if (Directory.Exists(TempDir))
+            Directory.Delete(TempDir, recursive: true);
+    }
 }
