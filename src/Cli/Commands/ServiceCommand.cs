@@ -18,8 +18,8 @@ public class ServiceCommand : Command
 
     private readonly Command _removeCmd;
 
-    public ServiceCommand(string name, string? description = null, HttpClient? httpClient = null)
-        : base(name, description)
+    public ServiceCommand(string? name = null, string? description = null, HttpClient? httpClient = null)
+        : base(name ?? "service", description ?? "Manage Lampman services")
     {
         this._httpClient = httpClient ?? new();
 

@@ -10,8 +10,8 @@ public class RestartCommand : Command
 
     private readonly Argument<string[]> _servicesArgument;
 
-    public RestartCommand(string name, string? description = null)
-        : base(name, description)
+    public RestartCommand(string? name = null, string? description = null)
+        : base(name ?? "restart", description ?? "Restart all or selected services")
     {
         _servicesArgument = new("services")
         {

@@ -20,8 +20,8 @@ public class RegistryCommand : Command
 
     private readonly Command _updateRegistryCmd;
 
-    public RegistryCommand(string name, string? description = null, HttpClient? httpClient = null)
-        : base(name, description)
+    public RegistryCommand(string? name = null, string? description = null, HttpClient? httpClient = null)
+        : base(name ?? "registry", description ?? "Manage service registries")
     {
         _httpClient = httpClient ?? new();
 

@@ -12,27 +12,23 @@ public class LampmanApp(HttpClient? httpClient = null)
     {
         RootCommand rootCommand = new("Lampman CLI - Manage your local development stack");
 
-        StartCommand startCmd = new("start", "Start all or selected services");
-        StopCommand stopCmd = new("stop", "Stop all or selected services");
-        RestartCommand restartCmd = new("restart", "Restart all or selected services");
-        ListCommand listCmd = new("list", "List configured services");
+        StartCommand startCmd = new();
+        StopCommand stopCmd = new();
+        RestartCommand restartCmd = new();
+        ListCommand listCmd = new();
 
         rootCommand.Subcommands.Add(startCmd);
         rootCommand.Subcommands.Add(stopCmd);
         rootCommand.Subcommands.Add(restartCmd);
         rootCommand.Subcommands.Add(listCmd);
 
-        /**
-        * Service manager commands
-        */
-        ServiceCommand serviceCmd = new("service", "Manage Lampman services", _httpClient);
+        // Service manager commands
+        ServiceCommand serviceCmd = new(httpClient: _httpClient);
 
         rootCommand.Subcommands.Add(serviceCmd);
 
-        /**
-        * Registry manager commands
-        */
-        RegistryCommand registryCmd = new("registry", "Manage service registries", _httpClient);
+        // Registry manager commands
+        RegistryCommand registryCmd = new(httpClient: _httpClient);
 
         rootCommand.Subcommands.Add(registryCmd);
 

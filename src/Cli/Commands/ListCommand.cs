@@ -8,8 +8,8 @@ public class ListCommand : Command
 {
     private readonly StackManager _manager = new();
 
-    public ListCommand(string name, string? description = null)
-        : base(name, description)
+    public ListCommand(string? name = null, string? description = null)
+        : base(name ?? "list", description ?? "List configured services")
     {
         SetAction(parseResult => Execute());
     }

@@ -10,8 +10,8 @@ public class StopCommand : Command
 
     private readonly Argument<string[]> _servicesArgument;
 
-    public StopCommand(string name, string? description = null)
-        : base(name, description)
+    public StopCommand(string? name = null, string? description = null)
+        : base(name ?? "stop", description ?? "Stop all or selected services")
     {
         _servicesArgument = new("services")
         {

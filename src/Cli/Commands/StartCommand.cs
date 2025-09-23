@@ -10,8 +10,8 @@ public class StartCommand : Command
 
     private readonly Argument<string[]> _servicesArgument;
 
-    public StartCommand(string name, string? description = null)
-        : base(name, description)
+    public StartCommand(string? name = null, string? description = null)
+        : base(name ?? "start", description ?? "Start all or selected services")
     {
         _servicesArgument = new("services")
         {
