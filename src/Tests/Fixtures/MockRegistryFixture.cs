@@ -72,11 +72,17 @@ public class MockRegistryFixture : IDisposable
                         Url = $"{baseAddress}services/{serviceZipFileName}",
                         Checksum = new Dictionary<string, string> { { "SHA256", fakeChecksum } },
                         ExtractTo = null,
-                        ServiceProcess = new ServiceProcess()
-                        {
-                            Name = serviceName,
-                            Version = version,
-                        }
+                        Processes = [
+                            new ServiceProcess()
+                            {
+                                Name = serviceName,
+                                Version = version,
+                                ExePath = "",
+                                isExtention = false,
+                                MustBeDemonizing = false,
+                                AvailableToPathEnvVar = true,
+                            }
+                        ]
                     };
                 }
             }

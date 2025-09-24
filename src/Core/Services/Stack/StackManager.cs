@@ -50,20 +50,20 @@ public class StackManager
         {
             foreach (var service in toStart)
             {
-                if (service.Start is null)
+                if (service.ExePath is null)
                 {
                     Console.WriteLine($"{ANSI_RED}[ERROR] Cannot start {service.Name} - Start command is not defined.{ANSI_RESET}");
                     continue;
                 }
 
-                if (!ServiceExists(service.Start))
+                if (!ServiceExists(service.ExePath))
                 {
-                    Console.WriteLine($"{ANSI_RED}[ERROR] Cannot start {service.Name} - File not found: {service.Start}{ANSI_RESET}");
+                    Console.WriteLine($"{ANSI_RED}[ERROR] Cannot start {service.Name} - File not found: {service.ExePath}{ANSI_RESET}");
                     continue;
                 }
 
                 _processes[service.Name] = new StackProcess();
-                _processes[service.Name].Start(service.Start);
+                _processes[service.Name].Start(service.ExePath);
 
                 Console.WriteLine($"{ANSI_GREEN}[START] {service.Name} ({service.Version}){ANSI_RESET}");
             }
@@ -82,14 +82,14 @@ public class StackManager
         {
             foreach (var service in toStop)
             {
-                var exeName = Path.GetFileNameWithoutExtension(service.Start);
+                var exeName = Path.GetFileNameWithoutExtension(service.ExePath);
                 if (exeName is null || !IsProcessRunning(exeName))
                 {
                     Console.WriteLine($"{ANSI_YELLOW}[WARNING] {service.Name} is not running.{ANSI_RESET}");
                     continue;
                 }
 
-                if (service.Stop is null)
+                if (service.ExePath is null)
                 {
                     Console.WriteLine($"{ANSI_RED}[ERROR] Cannot stop {service.Name} - Stop command is not defined.{ANSI_RESET}");
                     continue;
@@ -101,7 +101,7 @@ public class StackManager
                     continue;
                 }
 
-                _processes[service.Name].Stop(service.Stop);
+                _processes[service.Name].Stop(service.ExePath);
 
                 Console.WriteLine($"{ANSI_GREEN}[STOP] {service.Name}{ANSI_RESET}");
             }

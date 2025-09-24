@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 using Lampman.Core.Models;
 using Lampman.Core.Utils;
@@ -35,129 +36,158 @@ public class RegistryManager
     private void EnsureConfig()
     {
         if (!File.Exists(RegistryConfigFile))
-        {
-
             File.WriteAllText(RegistryConfigFile, JsonSerializer.Serialize(PathResolver.DefaultRegistrySource, new JsonSerializerOptions { WriteIndented = true }));
-        }
     }
 
-    public void ListRegistries()
+    public void ListRegistries(bool verbose = false)
     {
         EnsureConfig();
-        var sources = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(RegistryConfigFile));
+
+        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryEntry>>(File.ReadAllText(RegistryConfigFile));
         Console.WriteLine($"{ANSI_BLUE}[INFO] Configured registries:{ANSI_RESET}");
 
-        if (sources == null || sources.Count == 0)
+        if (registries == null || registries.Count == 0)
         {
             Console.WriteLine($"{ANSI_YELLOW}[WARNING] No registries configured.{ANSI_RESET}");
             return;
         }
 
-        foreach (var src in sources)
-            Console.WriteLine($" - {src}");
-    }
-
-    public void AddRegistry(string url)
-    {
-        EnsureConfig();
-        var sources = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(RegistryConfigFile));
-
-        if (sources == null)
+        foreach (var kv in registries)
         {
-            sources = new List<string>();
-        }
+            var ns = kv.Key;
+            var entry = kv.Value;
 
-        if (!sources.Contains(url))
-        {
-            // Verificate URL format
-            if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+            Console.WriteLine($"{ANSI_BLUE}[INFO] {ns}:{entry.Url}{ANSI_RESET}");
+
+            if (verbose)
             {
-                Console.WriteLine($"{ANSI_RED}[ERROR] Invalid URL format: {url}{ANSI_RESET}");
-                return;
+                Console.WriteLine($"{ANSI_BLUE}[INFO] Description: {entry.Description ?? "(none)"}{ANSI_RESET}");
+                Console.WriteLine($"{ANSI_BLUE}[INFO] Checksum: {entry.Checksum?.FirstOrDefault().Value ?? "(none)"}{ANSI_RESET}");
             }
-
-            sources.Add(url);
-            File.WriteAllText(RegistryConfigFile, JsonSerializer.Serialize(sources, new JsonSerializerOptions { WriteIndented = true }));
-            Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Added registry: {url}{ANSI_RESET}");
-        }
-        else
-        {
-            Console.WriteLine($"{ANSI_YELLOW}[WARNING] Registry already exists.{ANSI_RESET}");
         }
     }
 
-    public void RemoveRegistry(string url)
+    public void AddRegistry(string ns, string url, string? description = null, string? hashFunc = null, string? hashValue = null, bool verbose = false)
     {
         EnsureConfig();
-        var sources = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(RegistryConfigFile));
 
-        if (sources == null)
+        if (!Regex.IsMatch(ns, "^[a-z0-9\\-]+$"))
+        {
+            Console.WriteLine($"Invalid namespace format: {ns}");
+            return;
+        }
+
+        if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+        {
+            Console.WriteLine($"Invalid URL: {url}");
+            return;
+        }
+
+        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryEntry>>(File.ReadAllText(RegistryConfigFile)) ?? new();
+
+        if (registries.ContainsKey(ns))
+        {
+            Console.WriteLine($"Namespace already exists: {ns}");
+            return;
+        }
+
+        Dictionary<string, string>? checksum = null;
+        if (!string.IsNullOrWhiteSpace(hashFunc) && !string.IsNullOrWhiteSpace(hashValue))
+        {
+            checksum = new Dictionary<string, string>
+        {
+            { hashFunc.ToUpperInvariant(), hashValue.ToLowerInvariant() }
+        };
+        }
+
+        registries[ns] = new RegistryEntry
+        {
+            Description = description,
+            Url = url,
+            Checksum = checksum
+        };
+
+        File.WriteAllText(RegistryConfigFile, JsonSerializer.Serialize(registries, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine($"Added registry @{ns}: {url}");
+    }
+
+    public void RemoveRegistry(string ns, bool verbose = false)
+    {
+        EnsureConfig();
+        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryEntry>>(File.ReadAllText(RegistryConfigFile));
+        if (registries == null || !registries.Remove(ns))
+        {
+            Console.WriteLine($"{ANSI_YELLOW}[WARNING] Registry not found: {ns}{ANSI_RESET}");
+            return;
+        }
+
+        File.WriteAllText(RegistryConfigFile, JsonSerializer.Serialize(registries, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Removed registry @{ns}{ANSI_RESET}");
+    }
+
+    public async Task UpdateServices(bool verbose = false)
+    {
+        EnsureConfig();
+        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryEntry>>(File.ReadAllText(RegistryConfigFile));
+        if (registries == null || registries.Count == 0)
         {
             Console.WriteLine($"{ANSI_YELLOW}[WARNING] No registries configured.{ANSI_RESET}");
             return;
         }
 
-        if (sources.Remove(url))
-        {
-            File.WriteAllText(RegistryConfigFile, JsonSerializer.Serialize(sources, new JsonSerializerOptions { WriteIndented = true }));
-            Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Removed registry: {url}{ANSI_RESET}");
-        }
-        else
-        {
-            Console.WriteLine($"{ANSI_YELLOW}[WARNING] Registry not found.{ANSI_RESET}");
-        }
-    }
+        var merged = new Dictionary<string, RegistryServices>();
 
-    public async Task UpdateServices()
-    {
-        EnsureConfig();
-        var sources = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(RegistryConfigFile));
-        var merged = new Dictionary<string, Dictionary<string, ServiceSource>>();
-
-        if (sources == null || sources.Count == 0)
-        {
-            Console.WriteLine($"{ANSI_YELLOW}[WARNING] No registries configured.{ANSI_RESET}");
-            return;
-        }
-
-        foreach (var src in sources)
+        foreach (var (ns, entry) in registries)
         {
             try
             {
-                Console.WriteLine($"{ANSI_BLUE}[INFO] Fetching {src}...{ANSI_RESET}");
-                var json = await _httpClient.GetStringAsync(src);
+                Console.WriteLine($"{ANSI_BLUE}[INFO] Fetching @{ns} → {entry.Url}{ANSI_RESET}");
+                var bytes = await _httpClient.GetByteArrayAsync(entry.Url);
 
-                var services = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, ServiceSource>>>(json);
-
-                if (services == null)
+                // Validate checksum
+                if (entry.Checksum != null && entry.Checksum.Count > 0)
                 {
-                    Console.WriteLine($"{ANSI_RED}[ERROR] Invalid registry format from {src}{ANSI_RESET}");
+                    bool checksumFailed = true;
+                    foreach (var (hashFunc, expected) in entry.Checksum)
+                    {
+                        checksumFailed = !ChecksumVerifier.Verify(bytes, hashFunc, expected);
+                        if (!checksumFailed)
+                        {
+                            Console.WriteLine($"[SUCCESS] {hashFunc} checksum verified for @{ns}");
+                            break;
+                        }
+                    }
+
+                    if (checksumFailed)
+                    {
+                        Console.WriteLine($"{ANSI_RED}[ERROR] checksum mismatch for @{ns}{ANSI_RESET}");
+                        continue;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"{ANSI_YELLOW}[WARNING] No checksum defined for @{ns}, skipping validation.{ANSI_RESET}");
                     continue;
                 }
 
-                foreach (var service in services)
+                // Deserialize JSON
+                var json = System.Text.Encoding.UTF8.GetString(bytes);
+                var parsed = JsonSerializer.Deserialize<RegistryServices>(json);
+                if (parsed == null)
                 {
-                    string serviceName = SlugHelper.GenerateSlug(service.Key);
-
-                    if (!merged.ContainsKey(serviceName))
-                        merged[serviceName] = new Dictionary<string, ServiceSource>();
-
-                    foreach (var ver in service.Value)
-                    {
-                        string versionSlug = SlugHelper.GenerateSlug(ver.Key, true);
-
-                        if (!merged[serviceName].ContainsKey(versionSlug))
-                            merged[serviceName][versionSlug] = ver.Value;
-                    }
+                    Console.WriteLine($"{ANSI_RED}[ERROR] Invalid registry format: {entry.Url}{ANSI_RESET}");
+                    continue;
                 }
+
+                merged[ns] = parsed;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ANSI_RED}[ERROR] Failed to fetch {src}: {ex.Message}{ANSI_RESET}");
+                Console.WriteLine($"{ANSI_RED}[ERROR] Failed to fetch {entry.Url}: {ex.Message}{ANSI_RESET}");
             }
         }
 
         File.WriteAllText(ServicesConfigFile, JsonSerializer.Serialize(merged, new JsonSerializerOptions { WriteIndented = true }));
-        Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Registry updated → {ServicesConfigFile}{ANSI_RESET}");
+        Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Services.json updated → {ServicesConfigFile}{ANSI_RESET}");
     }
 }
