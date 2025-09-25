@@ -1,10 +1,12 @@
+using Lampman.Core.Models;
+
 namespace Lampman.Core;
 
 public static class PathResolver
 {
     public static readonly string RootDir;
     public static readonly bool IsDev;
-    public static readonly List<string> DefaultRegistrySource;
+    public static readonly Dictionary<string, RegistryEntry> DefaultRegistrySource;
 
     static PathResolver()
     {
@@ -26,10 +28,18 @@ public static class PathResolver
             IsDev = true;
         }
 
-        DefaultRegistrySource = new List<string>
+        DefaultRegistrySource = new Dictionary<string, RegistryEntry>
+        {
             {
-                "https://raw.githubusercontent.com/samuel-alvarez-quintero/Lampman/refs/heads/master/registry/MainOriginServices.json"
-            };
+                "official", new RegistryEntry(){
+                Url = "https://github.com/samuel-alvarez-quintero/lampman-official-registry/releases/download/v0.2.1/lamp.json",
+                Description = "Official Windows Lamp services",
+                Checksum = new Dictionary<string, string>{
+                    { "SHA256", "953a852b3ad6a5015f2ef0abbe131f91738f2f44d6443ee6b07a2f0bf9b184bf" }
+                }
+            }
+            },
+        };
     }
 
     public static string RegistryFile => Path.Combine(RootDir, "registry.json");

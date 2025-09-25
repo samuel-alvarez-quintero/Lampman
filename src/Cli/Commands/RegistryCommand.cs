@@ -16,7 +16,7 @@ public class RegistryCommand : Command
 
     private readonly Argument<string> _nsArgument;
     private readonly Argument<string> _urlArgument;
-    private readonly Argument<string> _descriptionArgument;
+    private readonly Option<string> _descriptionOption;
     private readonly Option<string> _checksumOption;
     private readonly Option<bool> _verboseOption;
 
@@ -57,9 +57,10 @@ public class RegistryCommand : Command
             Description = "Registry URL"
         };
 
-        _descriptionArgument = new("description")
+        _descriptionOption = new("--description")
         {
-            Description = "Description of the new registry"
+            Description = "Description of the new registry",
+            Required = false
         };
 
         _checksumOption = new("--checksum")
@@ -89,7 +90,7 @@ public class RegistryCommand : Command
         {
             _nsArgument,
             _urlArgument,
-            _descriptionArgument,
+            _descriptionOption,
             _checksumOption,
             _verboseOption
         };
@@ -137,7 +138,7 @@ public class RegistryCommand : Command
         if (null == url)
             throw new Exception("The URL parameter is required");
 
-        string? description = parseResult.GetValue(_descriptionArgument);
+        string? description = parseResult.GetValue(_descriptionOption);
         string? checksum = parseResult.GetValue(_checksumOption);
 
         if (!string.IsNullOrEmpty(checksum))
