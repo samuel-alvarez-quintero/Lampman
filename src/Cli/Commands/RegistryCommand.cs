@@ -160,7 +160,7 @@ public class RegistryCommand : Command
     public void RemoveExecute(ParseResult parseResult)
     {
         bool verbose = parseResult.GetValue(_verboseOption);
-        string ns = parseResult.GetValue(_urlArgument) ?? string.Empty;
+        string ns = parseResult.GetValue(_nsArgument) ?? string.Empty;
 
         _manager.RemoveRegistry(ns, verbose);
     }

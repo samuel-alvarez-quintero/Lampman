@@ -16,7 +16,6 @@ public class ServiceCommand : Command
 
     private readonly Argument<string> _serviceArgument;
 
-
     /// <summary>
     /// Download and install the service in the services directory
     /// </summary>
@@ -49,7 +48,7 @@ public class ServiceCommand : Command
         {
             _serviceArgument
         };
-        _installCmd.SetAction(parseResult => InstallExecute(parseResult.GetValue(_serviceArgument) ?? string.Empty));
+        _installCmd.SetAction(parseResult => InstallExecute(parseResult));
 
         Subcommands.Add(_installCmd);
 
@@ -58,7 +57,7 @@ public class ServiceCommand : Command
         {
             _serviceArgument
         };
-        _updateCmd.SetAction(parseResult => UpdateExecute(parseResult.GetValue(_serviceArgument) ?? string.Empty));
+        _updateCmd.SetAction(parseResult => UpdateExecute(parseResult));
 
         Subcommands.Add(_updateCmd);
 
@@ -67,23 +66,29 @@ public class ServiceCommand : Command
             {
                 _serviceArgument
             };
-        _removeCmd.SetAction(parseResult => RemoveExecute(parseResult.GetValue(_serviceArgument) ?? string.Empty));
+        _removeCmd.SetAction(parseResult => RemoveExecute(parseResult));
 
         Subcommands.Add(_removeCmd);
     }
 
-    public void InstallExecute(string service)
+    public void InstallExecute(ParseResult parseResult)
     {
+        string service = parseResult.GetValue(_serviceArgument) ?? string.Empty;
+
         Task.Run(() => _manager.InstallService(service)).Wait();
     }
 
-    public void UpdateExecute(string service)
+    public void UpdateExecute(ParseResult parseResult)
     {
+        string service = parseResult.GetValue(_serviceArgument) ?? string.Empty;
+
         Task.Run(() => _manager.UpdateService(service)).Wait();
     }
 
-    public void RemoveExecute(string service)
+    public void RemoveExecute(ParseResult parseResult)
     {
+        string service = parseResult.GetValue(_serviceArgument) ?? string.Empty;
+
         _manager.RemoveService(service);
     }
 }

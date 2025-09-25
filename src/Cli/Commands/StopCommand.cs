@@ -26,11 +26,13 @@ public class StopCommand : Command
             Description = "Optional list of services"
         };
 
-        SetAction(parseResult => Execute(parseResult.GetValue(_servicesArgument)));
+        SetAction(parseResult => Execute(parseResult));
     }
 
-    public void Execute(string[]? services)
+    public void Execute(ParseResult parseResult)
     {
+        string[]? services = parseResult.GetValue(_servicesArgument);
+
         _manager.StopServices(services);
     }
 }
