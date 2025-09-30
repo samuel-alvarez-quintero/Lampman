@@ -11,12 +11,7 @@ public class LampmanApp
 
     public LampmanApp(HttpClient? httpClient = null)
     {
-        _httpClient = httpClient ?? new(new LoggingHandler(new HttpClientHandler()));
-
-        _httpClient.DefaultRequestHeaders.Clear();
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Lampman/0.1");
-        _httpClient.DefaultRequestHeaders.Accept.ParseAdd("*/*");
-        _httpClient.DefaultRequestHeaders.Connection.Add("keep-alive");
+        _httpClient = httpClient ?? new BrowserClient();
     }
 
     public async Task<int> RunAsync(string[] args)

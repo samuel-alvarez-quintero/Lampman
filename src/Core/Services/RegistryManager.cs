@@ -18,14 +18,14 @@ public class RegistryManager
     private static readonly string RegistryConfigFile = PathResolver.RegistryFile;
     private static readonly string ServicesConfigFile = PathResolver.ServicesFile;
 
-    private readonly HttpClient _httpClient;
+    public HttpClient HttpBrowserClient;
 
     public RegistryManager(HttpClient? httpClient = null)
     {
-        _httpClient = httpClient ?? new();
+        HttpBrowserClient = httpClient ?? new();
     }
 
-    private void EnsureConfig()
+    private static void EnsureDefaultConfig()
     {
         if (!File.Exists(RegistryConfigFile))
             File.WriteAllText(RegistryConfigFile, JsonSerializer.Serialize(PathResolver.DefaultRegistrySource, new JsonSerializerOptions { WriteIndented = true }));
@@ -33,7 +33,7 @@ public class RegistryManager
 
     public void ListRegistries(bool verbose = false)
     {
-        EnsureConfig();
+        EnsureDefaultConfig();
 
         var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryEntry>>(File.ReadAllText(RegistryConfigFile));
         Console.WriteLine($"{ANSI_BLUE}[INFO] Configured registries:{ANSI_RESET}");
@@ -61,7 +61,7 @@ public class RegistryManager
 
     public void AddRegistry(string ns, string url, string? description = null, string? hashFunc = null, string? hashValue = null, bool verbose = false)
     {
-        EnsureConfig();
+        EnsureDefaultConfig();
 
         if (!Regex.IsMatch(ns, "^[a-z0-9\\-]+$"))
         {
@@ -96,7 +96,8 @@ public class RegistryManager
         {
             Description = description,
             Url = url,
-            Checksum = checksum
+            Checksum = checksum,
+            LastRequest = null
         };
 
         File.WriteAllText(RegistryConfigFile, JsonSerializer.Serialize(registries, new JsonSerializerOptions { WriteIndented = true }));
@@ -105,7 +106,7 @@ public class RegistryManager
 
     public void RemoveRegistry(string ns, bool verbose = false)
     {
-        EnsureConfig();
+        EnsureDefaultConfig();
         var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryEntry>>(File.ReadAllText(RegistryConfigFile));
         if (registries == null || !registries.Remove(ns))
         {
@@ -119,7 +120,7 @@ public class RegistryManager
 
     public async Task UpdateServices(bool verbose = false)
     {
-        EnsureConfig();
+        EnsureDefaultConfig();
         var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryEntry>>(File.ReadAllText(RegistryConfigFile));
         if (registries == null || registries.Count == 0)
         {
@@ -134,7 +135,7 @@ public class RegistryManager
             try
             {
                 Console.WriteLine($"{ANSI_BLUE}[INFO] Fetching @{ns} → {entry.Url}{ANSI_RESET}");
-                var bytes = await _httpClient.GetByteArrayAsync(entry.Url);
+                var bytes = await HttpBrowserClient.GetByteArrayAsync(entry.Url);
 
                 // Validate checksum
                 if (entry.Checksum != null && entry.Checksum.Count > 0)
@@ -170,6 +171,8 @@ public class RegistryManager
                     Console.WriteLine($"{ANSI_RED}[ERROR] Invalid registry format: {entry.Url}{ANSI_RESET}");
                     continue;
                 }
+
+                parsed.LastRequest = DateTime.Now;
 
                 merged[ns] = parsed;
             }

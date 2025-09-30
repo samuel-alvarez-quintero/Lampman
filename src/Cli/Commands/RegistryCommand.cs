@@ -1,6 +1,7 @@
 using System.CommandLine;
 
 using Lampman.Core.Services;
+using Lampman.Core.Utils;
 
 namespace Lampman.Cli.Commands;
 
@@ -122,12 +123,19 @@ public class RegistryCommand : Command
     {
         bool verbose = parseResult.GetValue(_verboseOption);
 
+        if (verbose)
+            _manager.HttpBrowserClient = new VerboseBrowserClient();
+
         _manager.ListRegistries(verbose);
     }
 
     public void AddExecute(ParseResult parseResult)
     {
         bool verbose = parseResult.GetValue(_verboseOption);
+
+        if (verbose)
+            _manager.HttpBrowserClient = new VerboseBrowserClient();
+
         string? ns = parseResult.GetValue(_nsArgument);
 
         if (null == ns)
@@ -161,6 +169,10 @@ public class RegistryCommand : Command
     public void RemoveExecute(ParseResult parseResult)
     {
         bool verbose = parseResult.GetValue(_verboseOption);
+
+        if (verbose)
+            _manager.HttpBrowserClient = new VerboseBrowserClient();
+
         string ns = parseResult.GetValue(_nsArgument) ?? string.Empty;
 
         _manager.RemoveRegistry(ns, verbose);
@@ -169,6 +181,9 @@ public class RegistryCommand : Command
     public async Task UpdateExecute(ParseResult parseResult)
     {
         bool verbose = parseResult.GetValue(_verboseOption);
+
+        if (verbose)
+            _manager.HttpBrowserClient = new VerboseBrowserClient();
 
         await _manager.UpdateServices(verbose);
     }
