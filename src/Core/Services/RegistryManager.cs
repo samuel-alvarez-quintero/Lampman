@@ -23,14 +23,6 @@ public class RegistryManager
     public RegistryManager(HttpClient? httpClient = null)
     {
         _httpClient = httpClient ?? new();
-
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-        "AppleWebKit/537.36 (KHTML, like Gecko) " +
-        "Chrome/122.0 Safari/537.36");
-
-        _httpClient.DefaultRequestHeaders.Accept.ParseAdd("*/*");
-        _httpClient.DefaultRequestHeaders.Connection.Add("keep-alive");
     }
 
     private void EnsureConfig()

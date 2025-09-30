@@ -1,12 +1,23 @@
 using System.CommandLine;
 
 using Lampman.Cli.Commands;
+using Lampman.Core.Utils;
 
 namespace Lampman.Cli;
 
-public class LampmanApp(HttpClient? httpClient = null)
+public class LampmanApp
 {
-    private readonly HttpClient _httpClient = httpClient ?? new();
+    private readonly HttpClient _httpClient;
+
+    public LampmanApp(HttpClient? httpClient = null)
+    {
+        _httpClient = httpClient ?? new(new LoggingHandler(new HttpClientHandler()));
+
+        _httpClient.DefaultRequestHeaders.Clear();
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Lampman/0.1");
+        _httpClient.DefaultRequestHeaders.Accept.ParseAdd("*/*");
+        _httpClient.DefaultRequestHeaders.Connection.Add("keep-alive");
+    }
 
     public async Task<int> RunAsync(string[] args)
     {
