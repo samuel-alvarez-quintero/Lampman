@@ -3,7 +3,7 @@ using System.Text.Json;
 
 using Lampman.Core.Models;
 
-namespace Lampman.Core.Services;
+namespace Lampman.Core.Services.Stack;
 
 public class StackManager
 {

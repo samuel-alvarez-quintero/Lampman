@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-using Lampman.Core.Services;
+using Lampman.Core.Services.Stack;
 
 namespace Lampman.Cli.Commands;
 

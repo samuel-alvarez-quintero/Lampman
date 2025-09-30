@@ -1,6 +1,6 @@
 using DotNetEnv;
 
-using Lampman.Core.Services;
+using Lampman.Core.Services.Stack;
 using Lampman.Tests.Fixtures;
 using Lampman.Tests.TestHelpers;
 

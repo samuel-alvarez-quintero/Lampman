@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace Lampman.Core.Services;
+namespace Lampman.Core.Services.Stack;
 
 public class StackProcess
 {
