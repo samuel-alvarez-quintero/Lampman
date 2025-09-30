@@ -11,8 +11,6 @@ namespace Lampman.Cli.Commands;
 /// </summary>
 public class RegistryCommand : Command
 {
-    private readonly HttpClient _httpClient;
-
     private readonly RegistryManager _manager;
 
     private readonly Argument<string> _nsArgument;
@@ -44,9 +42,7 @@ public class RegistryCommand : Command
     public RegistryCommand(string? name = null, string? description = null, HttpClient? httpClient = null)
         : base(name ?? "registry", description ?? "Manage service registries")
     {
-        _httpClient = httpClient ?? new();
-
-        _manager = new(_httpClient);
+        _manager = new(httpClient ?? new BrowserClient());
 
         _nsArgument = new("ns")
         {

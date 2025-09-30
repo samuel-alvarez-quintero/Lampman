@@ -1,9 +1,11 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
 
+using Lampman.Core.Utils;
+
 namespace Lampman.Core.Services;
 
-public class ServiceManager
+public class ServiceManager(HttpClient? httpClient = null)
 {
     // ANSI escape codes for colors
     const string ANSI_RED = "\u001B[31m";
@@ -14,12 +16,7 @@ public class ServiceManager
 
     private static readonly string InstallDir = PathResolver.ServicesInstallDir;
 
-    private readonly HttpClient _httpClient;
-
-    public ServiceManager(HttpClient? httpClient = null)
-    {
-        _httpClient = httpClient ?? new();
-    }
+    public HttpClient HttpBrowserClient = httpClient ?? new BrowserClient();
 
     public async Task InstallService(string serviceInput)
     {
@@ -103,7 +100,7 @@ public class ServiceManager
         try
         {
             // 1. Download the ZIP file
-            using var response = await _httpClient.GetAsync(fileUrl, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await HttpBrowserClient.GetAsync(fileUrl, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode(); // Throws an exception if the HTTP response status is not a success code.
 
             // 2. Save the downloaded stream to a local file

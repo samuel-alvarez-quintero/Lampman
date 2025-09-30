@@ -6,7 +6,7 @@ using Lampman.Core.Utils;
 
 namespace Lampman.Core.Services;
 
-public class RegistryManager
+public class RegistryManager(HttpClient? httpClient = null)
 {
     // ANSI escape codes for colors
     const string ANSI_RED = "\u001B[31m";
@@ -18,12 +18,7 @@ public class RegistryManager
     private static readonly string RegistryConfigFile = PathResolver.RegistryFile;
     private static readonly string ServicesConfigFile = PathResolver.ServicesFile;
 
-    public HttpClient HttpBrowserClient;
-
-    public RegistryManager(HttpClient? httpClient = null)
-    {
-        HttpBrowserClient = httpClient ?? new();
-    }
+    public HttpClient HttpBrowserClient = httpClient ?? new BrowserClient();
 
     private static void EnsureDefaultConfig()
     {
