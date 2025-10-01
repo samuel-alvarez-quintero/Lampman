@@ -1,6 +1,6 @@
 namespace Lampman.Core.Models;
 
-public class RegistryEntry
+public class RegistryNamespace
 {
     public string Url { get; set; } = string.Empty;
     public string? Version { get; set; } = null;
