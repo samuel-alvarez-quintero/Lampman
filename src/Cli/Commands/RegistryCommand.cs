@@ -17,6 +17,10 @@ public class RegistryCommand : Command
     private readonly Argument<string> _urlArgument;
     private readonly Option<string> _descriptionOption;
     private readonly Option<string> _checksumOption;
+    private readonly Option<bool> _sourceOption;
+    private readonly Option<string> _branchOption;
+
+    private readonly Option<bool> _forceOption;
     private readonly Option<bool> _verboseOption;
 
     /// <summary>
@@ -66,6 +70,26 @@ public class RegistryCommand : Command
             Required = false
         };
 
+        _sourceOption = new("--source", ["-s"])
+        {
+            Description = "Switch to the Source Manage",
+            Required = false,
+            DefaultValueFactory = _ => false
+        };
+
+        _branchOption = new("--branch")
+        {
+            Description = "Branch to fetch at the source",
+            Required = false
+        };
+
+        _forceOption = new("--force", ["-f"])
+        {
+            Description = "Force fetching source before the registry manager",
+            Required = false,
+            DefaultValueFactory = _ => false
+        };
+
         _verboseOption = new("--verbose", ["-v"])
         {
             Description = "The output provides detailed logs and error messages",
@@ -76,6 +100,8 @@ public class RegistryCommand : Command
         // definition of the list command
         _listRegistryCmd = new("list", "List configured registries")
         {
+            _sourceOption,
+            _forceOption,
             _verboseOption
         };
         _listRegistryCmd.SetAction(parseResult => ListExecute(parseResult));
@@ -89,6 +115,8 @@ public class RegistryCommand : Command
             _urlArgument,
             _descriptionOption,
             _checksumOption,
+            _sourceOption,
+            _branchOption,
             _verboseOption
         };
         _addRegistryCmd.SetAction(parseResult => AddExecute(parseResult));
@@ -99,6 +127,7 @@ public class RegistryCommand : Command
         _removeRegistryCmd = new("remove", "Remove a registry source")
         {
             _nsArgument,
+            _sourceOption,
             _verboseOption
         };
         _removeRegistryCmd.SetAction(parseResult => RemoveExecute(parseResult));
@@ -108,6 +137,8 @@ public class RegistryCommand : Command
         // definition of the fetch command
         _fetchRegistryCmd = new("fetch", "Refresh the local services.json from remote sources")
         {
+            _sourceOption,
+            _forceOption,
             _verboseOption
         };
         _fetchRegistryCmd.SetAction(parseResult => FetchExecute(parseResult));
@@ -115,19 +146,28 @@ public class RegistryCommand : Command
         Subcommands.Add(_fetchRegistryCmd);
     }
 
-    public void ListExecute(ParseResult parseResult)
+    public async Task ListExecute(ParseResult parseResult)
     {
         bool verbose = parseResult.GetValue(_verboseOption);
+        bool switchToSources = parseResult.GetValue(_sourceOption);
+        bool force = parseResult.GetValue(_forceOption);
 
         if (verbose)
             _manager.HttpBrowserClient = new VerboseBrowserClient();
 
-        _manager.ListRegistries(verbose);
+        if (force)
+            await _manager.FetchRegistries(verbose);
+
+        if (switchToSources)
+            _manager.ListSources(verbose);
+        else
+            _manager.ListRegistries(verbose);
     }
 
     public void AddExecute(ParseResult parseResult)
     {
         bool verbose = parseResult.GetValue(_verboseOption);
+        bool switchToSources = parseResult.GetValue(_sourceOption);
 
         if (verbose)
             _manager.HttpBrowserClient = new VerboseBrowserClient();
@@ -142,45 +182,64 @@ public class RegistryCommand : Command
         if (null == url)
             throw new Exception("The URL parameter is required");
 
-        string? description = parseResult.GetValue(_descriptionOption);
-        string? checksum = parseResult.GetValue(_checksumOption);
-
-        if (!string.IsNullOrEmpty(checksum))
+        if (switchToSources)
         {
-            var parts = checksum.Split(':', 2);
-            if (parts.Length != 2)
-            {
-                Console.WriteLine("[ERROR] --checksum must be HASHFUNC:HASHVALUE");
-                return;
-            }
+            string? branch = parseResult.GetValue(_branchOption);
 
-            _manager.AddRegistry(ns, url, description, hashFunc: parts[0], hashValue: parts[1], verbose: verbose);
+            _manager.AddSource(ns, url, branch);
         }
         else
         {
-            _manager.AddRegistry(ns, url, description, verbose: verbose);
+            string? description = parseResult.GetValue(_descriptionOption);
+            string? checksum = parseResult.GetValue(_checksumOption);
+
+            if (!string.IsNullOrEmpty(checksum))
+            {
+                var parts = checksum.Split(':', 2);
+                if (parts.Length != 2)
+                {
+                    Console.WriteLine("[ERROR] --checksum must be HASHFUNC:HASHVALUE");
+                    return;
+                }
+
+                _manager.AddRegistry(ns, url, description, hashFunc: parts[0], hashValue: parts[1], verbose: verbose);
+            }
+            else
+            {
+                _manager.AddRegistry(ns, url, description, verbose: verbose);
+            }
         }
     }
 
     public void RemoveExecute(ParseResult parseResult)
     {
         bool verbose = parseResult.GetValue(_verboseOption);
+        bool switchToSources = parseResult.GetValue(_sourceOption);
 
         if (verbose)
             _manager.HttpBrowserClient = new VerboseBrowserClient();
 
         string ns = parseResult.GetValue(_nsArgument) ?? string.Empty;
 
-        _manager.RemoveRegistry(ns, verbose);
+        if (switchToSources)
+            _manager.RemoveSource(ns, verbose);
+        else
+            _manager.RemoveRegistry(ns, verbose);
     }
 
     public async Task FetchExecute(ParseResult parseResult)
     {
         bool verbose = parseResult.GetValue(_verboseOption);
+        bool switchToSources = parseResult.GetValue(_sourceOption);
+        bool force = parseResult.GetValue(_forceOption);
 
         if (verbose)
             _manager.HttpBrowserClient = new VerboseBrowserClient();
 
-        await _manager.FetchServices(verbose);
+        if (switchToSources || force)
+            await _manager.FetchRegistries(verbose);
+
+        if (!switchToSources)
+            await _manager.FetchServices(verbose);
     }
 }

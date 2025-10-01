@@ -4,6 +4,8 @@ using System.Text.RegularExpressions;
 using Lampman.Core.Models;
 using Lampman.Core.Utils;
 
+using Octokit;
+
 namespace Lampman.Core.Services;
 
 public class RegistryManager(HttpClient? httpClient = null)
@@ -15,6 +17,7 @@ public class RegistryManager(HttpClient? httpClient = null)
     const string ANSI_YELLOW = "\e[0;33m";
     const string ANSI_RESET = "\u001B[0m"; // Resets all formatting
 
+    private static readonly string SourcesConfigFile = PathResolver.SourcesFile;
     private static readonly string RegistryConfigFile = PathResolver.RegistryFile;
     private static readonly string ServicesConfigFile = PathResolver.ServicesFile;
 
@@ -22,15 +25,18 @@ public class RegistryManager(HttpClient? httpClient = null)
 
     private static void EnsureDefaultConfig()
     {
+        if (!File.Exists(SourcesConfigFile))
+            File.WriteAllText(SourcesConfigFile, JsonSerializer.Serialize(PathResolver.DefaultRegistrySource, new JsonSerializerOptions { WriteIndented = true }));
+
         if (!File.Exists(RegistryConfigFile))
-            File.WriteAllText(RegistryConfigFile, JsonSerializer.Serialize(PathResolver.DefaultRegistrySource, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(RegistryConfigFile, JsonSerializer.Serialize(PathResolver.DefaultRegistryNamespace, new JsonSerializerOptions { WriteIndented = true }));
     }
 
     public void ListRegistries(bool verbose = false)
     {
         EnsureDefaultConfig();
 
-        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryEntry>>(File.ReadAllText(RegistryConfigFile));
+        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryNamespace>>(File.ReadAllText(RegistryConfigFile));
         Console.WriteLine($"{ANSI_BLUE}[INFO] Configured registries:{ANSI_RESET}");
 
         if (registries == null || registries.Count == 0)
@@ -70,7 +76,7 @@ public class RegistryManager(HttpClient? httpClient = null)
             return;
         }
 
-        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryEntry>>(File.ReadAllText(RegistryConfigFile)) ?? new();
+        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryNamespace>>(File.ReadAllText(RegistryConfigFile)) ?? new();
 
         if (registries.ContainsKey(ns))
         {
@@ -87,7 +93,7 @@ public class RegistryManager(HttpClient? httpClient = null)
         };
         }
 
-        registries[ns] = new RegistryEntry
+        registries[ns] = new RegistryNamespace
         {
             Description = description,
             Url = url,
@@ -102,7 +108,8 @@ public class RegistryManager(HttpClient? httpClient = null)
     public void RemoveRegistry(string ns, bool verbose = false)
     {
         EnsureDefaultConfig();
-        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryEntry>>(File.ReadAllText(RegistryConfigFile));
+
+        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryNamespace>>(File.ReadAllText(RegistryConfigFile));
         if (registries == null || !registries.Remove(ns))
         {
             Console.WriteLine($"{ANSI_YELLOW}[WARNING] Registry not found: {ns}{ANSI_RESET}");
@@ -116,7 +123,8 @@ public class RegistryManager(HttpClient? httpClient = null)
     public async Task FetchServices(bool verbose = false)
     {
         EnsureDefaultConfig();
-        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryEntry>>(File.ReadAllText(RegistryConfigFile));
+
+        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryNamespace>>(File.ReadAllText(RegistryConfigFile));
         if (registries == null || registries.Count == 0)
         {
             Console.WriteLine($"{ANSI_YELLOW}[WARNING] No registries configured.{ANSI_RESET}");
@@ -129,7 +137,7 @@ public class RegistryManager(HttpClient? httpClient = null)
         {
             try
             {
-                Console.WriteLine($"{ANSI_BLUE}[INFO] Fetching @{ns} → {entry.Url}{ANSI_RESET}");
+                Console.WriteLine($"{ANSI_BLUE}[INFO] Fetching @{ns} -> {entry.Url}{ANSI_RESET}");
                 var bytes = await HttpBrowserClient.GetByteArrayAsync(entry.Url);
 
                 // Validate checksum
@@ -155,7 +163,6 @@ public class RegistryManager(HttpClient? httpClient = null)
                 else
                 {
                     Console.WriteLine($"{ANSI_YELLOW}[WARNING] No checksum defined for @{ns}, skipping validation.{ANSI_RESET}");
-                    continue;
                 }
 
                 // Deserialize JSON
@@ -179,6 +186,145 @@ public class RegistryManager(HttpClient? httpClient = null)
         }
 
         File.WriteAllText(ServicesConfigFile, JsonSerializer.Serialize(merged, new JsonSerializerOptions { WriteIndented = true }));
-        Console.WriteLine($"{ANSI_GREEN}[SUCCESS] services.json refreshed → {ServicesConfigFile}{ANSI_RESET}");
+        Console.WriteLine($"{ANSI_GREEN}[SUCCESS] services.json refreshed -> {ServicesConfigFile}{ANSI_RESET}");
+    }
+
+    public void ListSources(bool verbose = false)
+    {
+        EnsureDefaultConfig();
+
+        var sources = JsonSerializer.Deserialize<Dictionary<string, RegistrySource>>(File.ReadAllText(SourcesConfigFile));
+        Console.WriteLine($"{ANSI_BLUE}[INFO] Configured sources:{ANSI_RESET}");
+
+        if (sources == null || sources.Count == 0)
+        {
+            Console.WriteLine($"{ANSI_YELLOW}[WARNING] No sources configured.{ANSI_RESET}");
+            return;
+        }
+
+        foreach (var kv in sources)
+        {
+            var ns = kv.Key;
+            var entry = kv.Value;
+
+            Console.WriteLine($"{ANSI_BLUE}[INFO] {ns}:{entry.Source}{ANSI_RESET}");
+        }
+    }
+
+    public void AddSource(string ns, string url, string? branch = null, bool verbose = false)
+    {
+        EnsureDefaultConfig();
+
+        if (!Regex.IsMatch(ns, "^[a-z0-9\\-]+$"))
+        {
+            Console.WriteLine($"Invalid namespace format: {ns}");
+            return;
+        }
+
+        if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+        {
+            Console.WriteLine($"Invalid URL: {url}");
+            return;
+        }
+
+        var sources = JsonSerializer.Deserialize<Dictionary<string, RegistrySource>>(File.ReadAllText(SourcesConfigFile)) ?? new();
+
+        if (sources.ContainsKey(ns))
+        {
+            Console.WriteLine($"Namespace already exists: {ns}");
+            return;
+        }
+
+        sources[ns] = new RegistrySource
+        {
+            Source = url,
+            Branch = branch
+        };
+
+        File.WriteAllText(SourcesConfigFile, JsonSerializer.Serialize(sources, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine($"Added source @{ns}: {url}");
+    }
+
+    public void RemoveSource(string ns, bool verbose = false)
+    {
+        EnsureDefaultConfig();
+
+        var sources = JsonSerializer.Deserialize<Dictionary<string, RegistrySource>>(File.ReadAllText(SourcesConfigFile));
+        if (sources == null || !sources.Remove(ns))
+        {
+            Console.WriteLine($"{ANSI_YELLOW}[WARNING] Source not found: {ns}{ANSI_RESET}");
+            return;
+        }
+
+        File.WriteAllText(SourcesConfigFile, JsonSerializer.Serialize(sources, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Removed source @{ns}{ANSI_RESET}");
+    }
+
+    public async Task FetchRegistries(bool verbose = false)
+    {
+        EnsureDefaultConfig();
+
+        var sources = JsonSerializer.Deserialize<Dictionary<string, RegistrySource>>(File.ReadAllText(SourcesConfigFile));
+        if (sources == null || sources.Count == 0)
+        {
+            Console.WriteLine($"{ANSI_YELLOW}[WARNING] No sources configured.{ANSI_RESET}");
+            return;
+        }
+
+        var merged = new Dictionary<string, RegistryNamespace>();
+
+        foreach (var (ns, entry) in sources)
+        {
+            try
+            {
+                Console.WriteLine($"{ANSI_BLUE}[INFO] Fetching source @{ns} -> {entry.Source}{ANSI_RESET}");
+
+                Uri sourceURI = new(entry.Source);
+                GitHubClient gitHubClient = new(new ProductHeaderValue("Lampman"));
+
+                var uriPathParts = sourceURI.AbsolutePath.Split("/");
+
+                if (null == uriPathParts || uriPathParts.Length < 0)
+                {
+                    throw new Exception($"Invalid Source: {entry.Source}");
+                }
+
+                string owner = uriPathParts[^2];
+                string repoName = uriPathParts[^1].Replace(".git", "");
+                var latestRelease = await gitHubClient.Repository.Release.GetLatest(owner, repoName);
+
+                if (null != latestRelease)
+                {
+                    var asset = latestRelease.Assets.First(_a => _a.ContentType == "application/json");
+
+                    merged[ns] = new RegistryNamespace
+                    {
+                        Url = asset.BrowserDownloadUrl,
+                        Version = latestRelease.TagName,
+                        Description = latestRelease.Body,
+                        LastRequest = DateTime.Now
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{ANSI_RED}[ERROR] Failed to fetch {entry.Source}: {ex.Message}{ANSI_RESET}");
+            }
+        }
+
+        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryNamespace>>(File.ReadAllText(RegistryConfigFile));
+        if (registries == null || registries.Count == 0)
+        {
+            Console.WriteLine($"{ANSI_YELLOW}[WARNING] No registries configured.{ANSI_RESET}");
+            return;
+        }
+
+        foreach (var kv in merged)
+        {
+            registries[kv.Key] = kv.Value;
+        }
+
+        File.WriteAllText(RegistryConfigFile, JsonSerializer.Serialize(registries, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine($"{ANSI_GREEN}[SUCCESS] registry.json refreshed -> {RegistryConfigFile}{ANSI_RESET}");
     }
 }
