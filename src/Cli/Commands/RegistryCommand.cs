@@ -35,9 +35,9 @@ public class RegistryCommand : Command
     private readonly Command _removeRegistryCmd;
 
     /// <summary>
-    /// Downloads service definitions from all registry namespaces and updates the local services.json
+    /// Downloads service definitions from all registry namespaces and refresh the local services.json
     /// </summary>
-    private readonly Command _updateRegistryCmd;
+    private readonly Command _fetchRegistryCmd;
 
     public RegistryCommand(string? name = null, string? description = null, HttpClient? httpClient = null)
         : base(name ?? "registry", description ?? "Manage service registries")
@@ -105,14 +105,14 @@ public class RegistryCommand : Command
 
         Subcommands.Add(_removeRegistryCmd);
 
-        // definition of the update command
-        _updateRegistryCmd = new("update", "Update local services.json from remote sources")
+        // definition of the fetch command
+        _fetchRegistryCmd = new("fetch", "Refresh the local services.json from remote sources")
         {
             _verboseOption
         };
-        _updateRegistryCmd.SetAction(parseResult => UpdateExecute(parseResult));
+        _fetchRegistryCmd.SetAction(parseResult => FetchExecute(parseResult));
 
-        Subcommands.Add(_updateRegistryCmd);
+        Subcommands.Add(_fetchRegistryCmd);
     }
 
     public void ListExecute(ParseResult parseResult)
@@ -174,13 +174,13 @@ public class RegistryCommand : Command
         _manager.RemoveRegistry(ns, verbose);
     }
 
-    public async Task UpdateExecute(ParseResult parseResult)
+    public async Task FetchExecute(ParseResult parseResult)
     {
         bool verbose = parseResult.GetValue(_verboseOption);
 
         if (verbose)
             _manager.HttpBrowserClient = new VerboseBrowserClient();
 
-        await _manager.UpdateServices(verbose);
+        await _manager.FetchServices(verbose);
     }
 }

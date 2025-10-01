@@ -113,7 +113,7 @@ public class RegistryManager(HttpClient? httpClient = null)
         Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Removed registry @{ns}{ANSI_RESET}");
     }
 
-    public async Task UpdateServices(bool verbose = false)
+    public async Task FetchServices(bool verbose = false)
     {
         EnsureDefaultConfig();
         var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryEntry>>(File.ReadAllText(RegistryConfigFile));
@@ -167,6 +167,7 @@ public class RegistryManager(HttpClient? httpClient = null)
                     continue;
                 }
 
+                parsed.Version = entry.Version;
                 parsed.LastRequest = DateTime.Now;
 
                 merged[ns] = parsed;
@@ -178,6 +179,6 @@ public class RegistryManager(HttpClient? httpClient = null)
         }
 
         File.WriteAllText(ServicesConfigFile, JsonSerializer.Serialize(merged, new JsonSerializerOptions { WriteIndented = true }));
-        Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Services.json updated → {ServicesConfigFile}{ANSI_RESET}");
+        Console.WriteLine($"{ANSI_GREEN}[SUCCESS] services.json refreshed → {ServicesConfigFile}{ANSI_RESET}");
     }
 }
