@@ -1,11 +1,8 @@
-using System.IO.Compression;
-using System.Security.Cryptography;
-
 using Lampman.Core.Utils;
 
 namespace Lampman.Core.Services;
 
-public class ServiceManager(HttpClient? httpClient = null)
+public class ServiceManager
 {
     // ANSI escape codes for colors
     const string ANSI_RED = "\u001B[31m";
@@ -14,15 +11,23 @@ public class ServiceManager(HttpClient? httpClient = null)
     const string ANSI_YELLOW = "\e[0;33m";
     const string ANSI_RESET = "\u001B[0m"; // Resets all formatting
 
-    private static readonly string InstallDir = PathResolver.ServicesInstallDir;
+    private static readonly string InstallDir = PathResolver.ServicesInstalledDir;
 
-    public HttpClient HttpBrowserClient = httpClient ?? new BrowserClient();
+    public HttpClient HttpBrowserClient;
+
+    private readonly CompressedFileHandler _compressFileHandler;
+
+    public ServiceManager(HttpClient? httpClient = null)
+    {
+        HttpBrowserClient = httpClient ?? new BrowserClient();
+        _compressFileHandler = new CompressedFileHandler(HttpBrowserClient);
+    }
 
     public async Task InstallService(string serviceInput)
     {
         try
         {
-            if (!File.Exists(PathResolver.ServicesFile))
+            if (!File.Exists(PathResolver.ServicesInstalledDir))
                 throw new Exception("Local services registry not found. Run `lampman registry update` first.");
 
             var (serviceName, version, meta) = ServiceResolver.Resolve(serviceInput);
@@ -54,7 +59,7 @@ public class ServiceManager(HttpClient? httpClient = null)
                 File.Delete(zipPath);
             }
 
-            await DownloadAndUnzipFileAsync(url, zipPath, targetDir, meta.Checksum);
+            await _compressFileHandler.DownloadAndUnzipFileAsync(url, zipPath, targetDir, meta.Checksum);
 
             Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Installed {serviceName}:{version} in {targetDir}{ANSI_RESET}");
         }
@@ -92,98 +97,6 @@ public class ServiceManager(HttpClient? httpClient = null)
         else
         {
             Console.WriteLine($"{ANSI_YELLOW}[WARNING] Service {serviceName}:{version} is not installed.{ANSI_RESET}");
-        }
-    }
-
-    private async Task DownloadAndUnzipFileAsync(string fileUrl, string destinationZipPath, string extractDirectory, Dictionary<string, string>? Checksum)
-    {
-        try
-        {
-            // 1. Download the ZIP file
-            using var response = await HttpBrowserClient.GetAsync(fileUrl, HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode(); // Throws an exception if the HTTP response status is not a success code.
-
-            // 2. Save the downloaded stream to a local file
-            await using (var contentStream = await response.Content.ReadAsStreamAsync())
-            await using (var fileStream = new FileStream(destinationZipPath, FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-                // Compute checksum and copy to destination
-                if (Checksum == null || Checksum.Count == 0)
-                {
-                    Console.WriteLine($"{ANSI_YELLOW}[WARNING] No checksum provided, skipping verification.{ANSI_RESET}");
-
-                    await contentStream.CopyToAsync(fileStream);
-                }
-                else
-                {
-                    foreach (var (hashFunc, expectedChecksum) in Checksum)
-                    {
-                        HashAlgorithm algo;
-
-                        switch (hashFunc)
-                        {
-                            case "SHA512":
-                                algo = SHA512.Create();
-                                break;
-                            case "SHA384":
-                                algo = SHA384.Create();
-                                break;
-                            case "SHA256":
-                                algo = SHA256.Create();
-                                break;
-                            case "SHA1":
-                                algo = SHA1.Create();
-                                break;
-
-                            default:
-                                Console.WriteLine($"{ANSI_YELLOW}[WARNING] Unknown hash algorithm: {hashFunc}{ANSI_RESET}");
-                                continue;
-                        }
-
-                        Console.WriteLine($"{ANSI_BLUE}[INFO] Verifying checksum for {hashFunc}...{ANSI_RESET}");
-
-                        // Wrap file stream with hashing stream
-                        using var cryptoStream = new CryptoStream(fileStream, algo, CryptoStreamMode.Write);
-
-                        await contentStream.CopyToAsync(cryptoStream);
-
-                        // Flush all buffers
-                        cryptoStream.FlushFinalBlock();
-
-                        // Compute final hash
-                        var hashBytes = algo.Hash!;
-                        var actualChecksum = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-
-                        if (string.Equals(actualChecksum, expectedChecksum.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
-                        {
-                            Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Checksum verified: {actualChecksum}{ANSI_RESET}");
-                            break;
-                        }
-                        else
-                        {
-                            Console.WriteLine($"{ANSI_RED}[ERROR] Checksum mismatch: {actualChecksum}{ANSI_RESET}");
-                        }
-                    }
-                }
-            }
-
-            Console.WriteLine($"{ANSI_BLUE}[INFO] Downloaded: {destinationZipPath}{ANSI_RESET}");
-
-            // 3. Unzip the downloaded file
-            ZipFile.ExtractToDirectory(destinationZipPath, extractDirectory, true); // 'true' overwrites existing files
-            Console.WriteLine($"{ANSI_BLUE}[INFO] Unzipped to: {extractDirectory}{ANSI_RESET}");
-        }
-        catch (HttpRequestException ex)
-        {
-            Console.WriteLine($"{ANSI_RED}[ERROR] HTTP error during download: {ex.Message}{ANSI_RESET}");
-        }
-        catch (IOException ex)
-        {
-            Console.WriteLine($"{ANSI_RED}[ERROR] File I/O error during download or unzip: {ex.Message}{ANSI_RESET}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"{ANSI_RED}[ERROR] An unexpected error occurred: {ex.Message}{ANSI_RESET}");
         }
     }
 }

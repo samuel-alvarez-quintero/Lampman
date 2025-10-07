@@ -7,7 +7,7 @@ namespace Lampman.Core.Services;
 
 public static class ServiceResolver
 {
-    private static readonly string ServicesConfigFile = PathResolver.ServicesFile;
+    private static readonly string ServicesConfigFile = PathResolver.ServicesInstalledDir;
 
     public static (string serviceName, string version, ServiceSource metadata) Resolve(string input)
     {
