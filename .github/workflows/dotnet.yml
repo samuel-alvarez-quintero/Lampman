@@ -1,36 +1,206 @@
 # This workflow will build a .NET project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
 
-name: .NET
+name: CI and Release workflows
 
 on:
   push:
-    branches: [ "master" ]
+    branches:
+      - master
+      - 'release-v*'
   pull_request:
-    branches: [ "master", "release-v[0-9]+.*" ]
+    branches:
+      - master
+      - 'release-v*'
+  workflow_dispatch: {}
 
 jobs:
-  build-and-test:
-    env:
-      DEFAULT_REGISTRY_SOURCE: 'https://raw.githubusercontent.com/samuel-alvarez-quintero/Lampman/refs/heads/master/registry/MainOriginServices.json'
-      TESTING_REGISTRY_SOURCES: 'https://drive.usercontent.google.com/download?id=1ItWv6mR03MN9JjnquQ8OSMvPd72t9mAE&export=download'
-      TESTING_SERVICES_TO_MANAGE: 'php:8.2'
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, linux-latest, macos-latest]
-
+  tests:
+    name: Tests (PRs to master and release branches)
+    if: github.event_name == 'pull_request' && (startsWith(github.event.pull_request.base.ref, 'release-v') || github.event.pull_request.base.ref == 'master')
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
-      
-      - name: Restore .NET tools
-        run: dotnet tool restore
+      - run: dotnet tool restore
+      - run: dotnet cake --target Test_With_Reportgenerator --configuration Debug --coverage cobertura
 
-      - name: dotnet test with Cake
-        run: dotnet cake --target Test_With_Reportgenerator --configuration Debug --coverage cobertura
+  beta_version_on_approval:
+    name: Beta version on PR approval for release branches
+    if: github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && startsWith(github.event.pull_request.base.ref, 'release-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Configure git credentials
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet tool restore
+      - name: Compute beta version and run Cake Version.Beta
+        run: |
+          BRANCH=${{ github.event.pull_request.head.ref }}
+          if [[ "$BRANCH" =~ ^release-v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+            VERSION="${BASH_REMATCH[1]}-beta"
+          else
+            VERSION="0.1.0-beta"
+          fi
+          echo "Using version $VERSION"
+          dotnet cake --target Version.Beta --version="$VERSION" --gitUserName="github-actions" --gitUserEmail="actions@github.com"
+
+  publish_prerelease_on_merge:
+    name: Publish pre-release on merged release branch PRs
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.base.ref, 'release-v')
+    strategy:
+      matrix:
+        runtime: [linux-x64, win-x64, osx-x64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet tool restore
+      - name: Publish installer for ${{ matrix.runtime }}
+        run: |
+          mkdir -p ./tmp/${{ matrix.runtime }}
+          dotnet publish Lampman.Installer -c Release -r ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true --output ./tmp/${{ matrix.runtime }}/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.runtime }}
+          path: ./tmp/${{ matrix.runtime }}/
+      - name: Clean tmp
+        if: always()
+        run: rm -rf tmp
+
+  bundle_and_release_prerelease:
+    name: Bundle and create pre-release
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.base.ref, 'release-v')
+    needs: publish_prerelease_on_merge
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./tmp
+      - name: Zip installers
+        run: |
+          cd tmp
+          zip -r ../installers-${{ github.sha }}.zip .
+          cd ..
+      - uses: actions/create-release@v1
+        id: create_release
+        with:
+          tag_name: prerelease-${{ github.sha }}
+          release_name: Pre-release ${{ github.event.pull_request.head.ref }}
+          draft: false
+          prerelease: true
+          body: Pre-release build from PR #${{ github.event.pull_request.number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: softprops/action-upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./installers-${{ github.sha }}.zip
+          asset_name: installers-${{ github.sha }}.zip
+          asset_content_type: application/zip
+      - name: Clean tmp
+        if: always()
+        run: rm -rf tmp
+
+  release_pr_to_master_version:
+    name: Versioning when opening PR from release branch to master
+    if: github.event_name == 'pull_request' && (startsWith(github.event.pull_request.head.ref, 'release-v') && github.event.pull_request.base.ref == 'master')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Configure git credentials
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet tool restore
+      - name: Compute release version and run Cake Version.Release
+        run: |
+          BRANCH=${{ github.event.pull_request.head.ref }}
+          if [[ "$BRANCH" =~ ^release-v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+          else
+            echo "Cannot derive version from branch name."
+            exit 1
+          fi
+          dotnet cake --target Version.Release --version="$VERSION" --gitUserName="github-actions" --gitUserEmail="actions@github.com"
+
+  final_release_on_merge_to_master:
+    name: Final release when PR merged to master from release branch
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'master' && startsWith(github.event.pull_request.head.ref, 'release-v')
+    strategy:
+      matrix:
+        runtime: [linux-x64, win-x64, osx-x64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet tool restore
+      - name: Publish installer for ${{ matrix.runtime }}
+        run: |
+          mkdir -p ./tmp/${{ matrix.runtime }}
+          dotnet publish Lampman.Installer -c Release -r ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true --output ./tmp/${{ matrix.runtime }}/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.runtime }}
+          path: ./tmp/${{ matrix.runtime }}/
+      - name: Clean tmp
+        if: always()
+        run: rm -rf tmp
+
+  bundle_and_release_final:
+    name: Bundle and publish latest release
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'master' && startsWith(github.event.pull_request.head.ref, 'release-v')
+    needs: final_release_on_merge_to_master
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./tmp
+      - name: Zip installers
+        run: |
+          cd tmp
+          zip -r ../installers-${{ github.sha }}.zip .
+          cd ..
+      - uses: actions/create-release@v1
+        id: create_release
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Latest release
+          draft: false
+          prerelease: false
+          body: Release built from PR #${{ github.event.pull_request.number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: softprops/action-upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./installers-${{ github.sha }}.zip
+          asset_name: installers-${{ github.sha }}.zip
+          asset_content_type: application/zip
+      - name: Clean tmp
+        if: always()
+        run: rm -rf tmp
