@@ -59,7 +59,8 @@ public class ServiceManager
                 File.Delete(zipPath);
             }
 
-            await _compressFileHandler.DownloadAndUnzipFileAsync(url, zipPath, targetDir, meta.Checksum);
+            await _compressFileHandler.DownloadFileAsync(url, zipPath, meta.Checksum);
+            _compressFileHandler.UnzipFile(zipPath, targetDir);
 
             Console.WriteLine($"{ANSI_GREEN}[SUCCESS] Installed {serviceName}:{version} in {targetDir}{ANSI_RESET}");
         }

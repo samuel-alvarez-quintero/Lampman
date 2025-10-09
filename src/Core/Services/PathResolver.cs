@@ -5,7 +5,7 @@ namespace Lampman.Core;
 public static class PathResolver
 {
     public static readonly string RootDir;
-    public static readonly Dictionary<string, RegistryNamespace> DefaultRegistrySources;
+    public static readonly Dictionary<string, GitHubRegistryNamespace> DefaultGitHubRegistrySources;
 
     static PathResolver()
     {
@@ -25,11 +25,12 @@ public static class PathResolver
                 Path.Combine(AppContext.BaseDirectory, @"."));
         }
 
-        DefaultRegistrySources = new Dictionary<string, RegistryNamespace>
+        DefaultGitHubRegistrySources = new Dictionary<string, GitHubRegistryNamespace>
         {
-            { "official", new RegistryNamespace
+            { "official", new GitHubRegistryNamespace
                 {
-                    Source = "https://github.com/samuel-alvarez-quintero/lampman-official-registry.git",
+                    Owner = "samuel-alvarez-quintero",
+                    RepoName = "lampman-official-registry",
                     Branch = "main"
                 }
             },

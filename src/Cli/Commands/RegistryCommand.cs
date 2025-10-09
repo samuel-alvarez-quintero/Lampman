@@ -14,10 +14,17 @@ public class RegistryCommand : Command
     private readonly RegistryManager _manager;
 
     private readonly Argument<string> _nsArgument;
-    private readonly Argument<string> _urlArgument;
+
+    private readonly Argument<string> _ownerArgument;
+
+    private readonly Argument<string> _repoNameArgument;
+
     private readonly Option<string> _descriptionOption;
+
     private readonly Option<string> _branchOption;
+
     private readonly Option<bool> _forceOption;
+
     private readonly Option<bool> _verboseOption;
 
     /// <summary>
@@ -50,9 +57,14 @@ public class RegistryCommand : Command
             Description = "Namespace key"
         };
 
-        _urlArgument = new("url")
+        _ownerArgument = new("owner")
         {
-            Description = "Registry URL"
+            Description = "GitHub owner repository"
+        };
+
+        _repoNameArgument = new("repoName")
+        {
+            Description = "GitHub name of repository"
         };
 
         _descriptionOption = new("--description")
@@ -95,7 +107,8 @@ public class RegistryCommand : Command
         _addRegistryCmd = new("add", "Add a registry source")
         {
             _nsArgument,
-            _urlArgument,
+            _ownerArgument,
+            _repoNameArgument,
             _descriptionOption,
             _branchOption,
             _verboseOption
@@ -151,17 +164,22 @@ public class RegistryCommand : Command
         if (null == ns)
             throw new Exception("The namespace parameter is required");
 
-        string? url = parseResult.GetValue(_urlArgument);
+        string? owner = parseResult.GetValue(_ownerArgument);
 
-        if (null == url)
-            throw new Exception("The URL parameter is required");
+        if (null == owner)
+            throw new Exception("The owner parameter is required");
+
+        string? repoName = parseResult.GetValue(_repoNameArgument);
+
+        if (null == repoName)
+            throw new Exception("The repository name parameter is required");
 
         string? branch = parseResult.GetValue(_branchOption);
 
         if (null == branch)
             throw new Exception("The branch parameter is required");
 
-        _manager.AddRegistrySource(ns, url, branch);
+        _manager.AddRegistrySource(ns, owner, repoName, branch);
     }
 
     public void RemoveExecute(ParseResult parseResult)

@@ -7,7 +7,7 @@ public class CompressedFileHandler(HttpClient? httpClient = null)
 {
     public HttpClient HttpBrowserClient = httpClient ?? new BrowserClient();
 
-    public async Task DownloadAndUnzipFileAsync(string fileUrl, string destinationZipPath, string extractDirectory, Dictionary<string, string>? Checksum = null)
+    public async Task DownloadFileAsync(string fileUrl, string destinationZipPath, Dictionary<string, string>? Checksum = null)
     {
         try
         {
@@ -80,14 +80,25 @@ public class CompressedFileHandler(HttpClient? httpClient = null)
             }
 
             Console.WriteLine($"[INFO] Downloaded: {destinationZipPath}");
-
-            // 3. Unzip the downloaded file
-            ZipFile.ExtractToDirectory(destinationZipPath, extractDirectory, true); // 'true' overwrites existing files
-            Console.WriteLine($"[INFO] Unzipped to: {extractDirectory}");
         }
         catch (HttpRequestException ex)
         {
             Console.WriteLine($"[ERROR] HTTP error during download: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] An unexpected error occurred: {ex.Message}");
+        }
+    }
+
+
+    public void UnzipFile(string destinationZipPath, string extractDirectory)
+    {
+        try
+        {
+            // Unzip the file
+            ZipFile.ExtractToDirectory(destinationZipPath, extractDirectory, true); // 'true' overwrites existing files
+            Console.WriteLine($"[INFO] Unzipped to: {extractDirectory}");
         }
         catch (IOException ex)
         {
@@ -97,6 +108,30 @@ public class CompressedFileHandler(HttpClient? httpClient = null)
         {
             Console.WriteLine($"[ERROR] An unexpected error occurred: {ex.Message}");
         }
+    }
+
+    public List<string> GetDirectoryNames(string zipFilePath)
+    {
+        List<string> directoryNames = [];
+
+        using (ZipArchive archive = ZipFile.OpenRead(zipFilePath))
+        {
+            foreach (ZipArchiveEntry entry in archive.Entries)
+            {
+                // Directories in a zip file typically have a trailing slash in their FullName
+                // and a Name property that is empty.
+                if (entry.FullName.EndsWith('/') && string.IsNullOrEmpty(entry.Name))
+                {
+                    // Extract the directory name from the FullName, removing the trailing slash
+                    string? directoryName = Path.GetDirectoryName(entry.FullName);
+                    if (!string.IsNullOrEmpty(directoryName))
+                    {
+                        directoryNames.Add(directoryName);
+                    }
+                }
+            }
+        }
+        return directoryNames;
     }
 
 }

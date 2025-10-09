@@ -1,10 +1,9 @@
+using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
 using Lampman.Core.Models;
 using Lampman.Core.Utils;
-
-using Microsoft.Win32;
 
 using Octokit;
 
@@ -20,25 +19,39 @@ public class RegistryManager
     const string ANSI_RESET = "\u001B[0m"; // Resets all formatting
 
     public HttpClient HttpBrowserClient;
+
     private readonly CompressedFileHandler _compressFileHandler;
+    private readonly GitHubClient _gitHubClient;
 
     public RegistryManager(HttpClient? httpClient = null)
     {
         HttpBrowserClient = httpClient ?? new BrowserClient();
         _compressFileHandler = new CompressedFileHandler(HttpBrowserClient);
+
+        string? version = Assembly.GetExecutingAssembly()
+                      .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+                      .InformationalVersion;
+
+        _gitHubClient = new GitHubClient(new Connection(
+            productInformation: new ProductHeaderValue("Lampman", version),
+            baseAddress: GitHubClient.GitHubApiUrl
+        ));
     }
 
     private static void EnsureDefaultConfig()
     {
         if (!File.Exists(PathResolver.RegistrySourcesFile))
-            File.WriteAllText(PathResolver.RegistrySourcesFile, JsonSerializer.Serialize(PathResolver.DefaultRegistrySources, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(
+                PathResolver.RegistrySourcesFile,
+                JsonSerializer.Serialize(PathResolver.DefaultGitHubRegistrySources, new JsonSerializerOptions { WriteIndented = true })
+            );
     }
 
     public void ListRegistrySources(bool verbose = false)
     {
         EnsureDefaultConfig();
 
-        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryNamespace>>(File.ReadAllText(PathResolver.RegistrySourcesFile));
+        var registries = JsonSerializer.Deserialize<Dictionary<string, GitHubRegistryNamespace>>(File.ReadAllText(PathResolver.RegistrySourcesFile));
         Console.WriteLine($"{ANSI_BLUE}[INFO] Configured registries:{ANSI_RESET}");
 
         if (registries == null || registries.Count == 0)
@@ -47,12 +60,9 @@ public class RegistryManager
             return;
         }
 
-        foreach (var kv in registries)
+        foreach (var (ns, entry) in registries)
         {
-            var ns = kv.Key;
-            var entry = kv.Value;
-
-            Console.WriteLine($"{ANSI_BLUE}[INFO] {ns}:{entry.Source}{ANSI_RESET}");
+            Console.WriteLine($"{ANSI_BLUE}[INFO] {ns}:{GitHubClient.GitHubApiUrl}{entry.Owner}/{entry.RepoName}{ANSI_RESET}");
 
             if (verbose)
             {
@@ -63,7 +73,7 @@ public class RegistryManager
         }
     }
 
-    public void AddRegistrySource(string ns, string sourceURL, string branch, bool verbose = false)
+    public void AddRegistrySource(string ns, string owner, string repoName, string branch, bool verbose = false)
     {
         EnsureDefaultConfig();
 
@@ -73,13 +83,7 @@ public class RegistryManager
             return;
         }
 
-        if (!Uri.IsWellFormedUriString(sourceURL, UriKind.Absolute))
-        {
-            Console.WriteLine($"Invalid URL: {sourceURL}");
-            return;
-        }
-
-        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryNamespace>>(File.ReadAllText(PathResolver.RegistrySourcesFile)) ?? new();
+        var registries = JsonSerializer.Deserialize<Dictionary<string, GitHubRegistryNamespace>>(File.ReadAllText(PathResolver.RegistrySourcesFile)) ?? new();
 
         if (registries.ContainsKey(ns))
         {
@@ -87,22 +91,23 @@ public class RegistryManager
             return;
         }
 
-        registries[ns] = new RegistryNamespace
+        registries[ns] = new GitHubRegistryNamespace
         {
-            Source = sourceURL,
+            Owner = owner,
+            RepoName = repoName,
             Branch = branch,
             LastRequest = null
         };
 
         File.WriteAllText(PathResolver.RegistrySourcesFile, JsonSerializer.Serialize(registries, new JsonSerializerOptions { WriteIndented = true }));
-        Console.WriteLine($"Added registry @{ns}: {sourceURL}");
+        Console.WriteLine($"Added registry @{ns}:{owner}/{repoName}");
     }
 
     public void RemoveRegistrySource(string ns, bool verbose = false)
     {
         EnsureDefaultConfig();
 
-        var registries = JsonSerializer.Deserialize<Dictionary<string, RegistryNamespace>>(File.ReadAllText(PathResolver.RegistrySourcesFile));
+        var registries = JsonSerializer.Deserialize<Dictionary<string, GitHubRegistryNamespace>>(File.ReadAllText(PathResolver.RegistrySourcesFile));
         if (registries == null || !registries.Remove(ns))
         {
             Console.WriteLine($"{ANSI_YELLOW}[WARNING] Registry not found: {ns}{ANSI_RESET}");
@@ -117,83 +122,108 @@ public class RegistryManager
     {
         EnsureDefaultConfig();
 
-        var sources = JsonSerializer.Deserialize<Dictionary<string, RegistryNamespace>>(File.ReadAllText(PathResolver.RegistrySourcesFile));
+        // Load existing sources
+        var sources = JsonSerializer.Deserialize<Dictionary<string, GitHubRegistryNamespace>>(File.ReadAllText(PathResolver.RegistrySourcesFile));
         if (sources == null || sources.Count == 0)
         {
             Console.WriteLine($"{ANSI_YELLOW}[WARNING] No sources configured.{ANSI_RESET}");
             return;
         }
 
-        var merged = new Dictionary<string, RegistryNamespace>();
-
         foreach (var (ns, entry) in sources)
         {
             try
             {
-                Console.WriteLine($"{ANSI_BLUE}[INFO] Fetching source @{ns} -> {entry.Source}{ANSI_RESET}");
+                Console.WriteLine($"{ANSI_BLUE}[INFO] Fetching source @{ns}:{entry.Owner}/{entry.RepoName}{ANSI_RESET}");
 
-                Uri sourceURI = new(entry.Source);
-                GitHubClient gitHubClient = new(new ProductHeaderValue("Lampman"));
 
-                var uriPathParts = sourceURI.AbsolutePath.Split("/");
-
-                if (null == uriPathParts || uriPathParts.Length < 0)
-                {
-                    throw new Exception($"Invalid Source: {entry.Source}");
-                }
-
-                string owner = uriPathParts[^2];
-                string repoName = uriPathParts[^1].Replace(".git", "");
-                var latestRelease = await gitHubClient.Repository.Release.GetLatest(owner, repoName);
-                var tags = await gitHubClient.Repository.GetAllTags(owner, repoName);
+                // Get latest release and tags
+                var latestRelease = await _gitHubClient.Repository.Release.GetLatest(entry.Owner, entry.RepoName);
+                var tags = await _gitHubClient.Repository.GetAllTags(entry.Owner, entry.RepoName);
 
                 if (null != latestRelease)
                 {
-                    string releaseTagName = latestRelease.TagName;
-
+                    // Update registry description with latest info
                     entry.Description = latestRelease.Body;
+
+                    string releaseTagName = latestRelease.TagName;
 
                     if (null != tags)
                     {
                         var tag = tags.First(_t => _t.Name == releaseTagName);
                         if (null != tag)
                         {
+                            // Update tag info
                             entry.Tag = tag.Name;
 
                             Console.WriteLine($"{ANSI_BLUE}[INFO] Found tag: {tag.Name}{ANSI_RESET}");
 
-                            var tempZipPath = Path.Combine(PathResolver.RegistriesDir, "tmp");
-
-                            if (!Directory.Exists(tempZipPath))
+                            // Create cache zip directory if doesn't exists
+                            string cacheTargetDir = Path.Combine(PathResolver.RegistriesDir, "cache");
+                            if (!Directory.Exists(cacheTargetDir))
                             {
-                                Console.WriteLine($"{ANSI_BLUE}[INFO] Creating temporary directory: {tempZipPath}{ANSI_RESET}");
-                                Directory.CreateDirectory(tempZipPath);
+                                Console.WriteLine($"{ANSI_BLUE}[INFO] Creating cache directory: {cacheTargetDir}{ANSI_RESET}");
+                                Directory.CreateDirectory(cacheTargetDir);
                             }
 
-                            tempZipPath = Path.Combine(tempZipPath, $"{ns}-{tag.Name}.zip");
+                            string cacheZipPath = Path.Combine(cacheTargetDir, $"{ns}-{tag.Name}.zip");
 
-                            if (File.Exists(tempZipPath))
+                            // Download and unzip if not already cached
+                            if (!File.Exists(cacheZipPath))
                             {
-                                Console.WriteLine($"{ANSI_YELLOW}[WARNING] Removing existing zip file: {tempZipPath}{ANSI_RESET}");
-                                File.Delete(tempZipPath);
+                                Console.WriteLine($"{ANSI_BLUE}[INFO] Download and extract {tag.ZipballUrl}...{ANSI_RESET}");
+                                await _compressFileHandler.DownloadFileAsync(tag.ZipballUrl, cacheZipPath);
+                                _compressFileHandler.UnzipFile(cacheZipPath, cacheTargetDir);
+                            }
+                            else
+                            {
+                                Console.WriteLine($"{ANSI_YELLOW}[WARNING] Using cached zip: {cacheZipPath}{ANSI_RESET}");
+                                _compressFileHandler.UnzipFile(cacheZipPath, cacheTargetDir);
                             }
 
-                            var targetDir = Path.Combine(PathResolver.RegistriesDir, "namespaces");
-                            if (Directory.Exists(targetDir) && Directory.EnumerateFileSystemEntries(targetDir).Any())
+                            List<string>? directoryNames = _compressFileHandler.GetDirectoryNames(cacheZipPath);
+                            if (null != directoryNames && directoryNames.Count > 0)
                             {
-                                Directory.Delete(targetDir, true);
-                                Directory.CreateDirectory(targetDir);
+                                // Clear existing target directory
+                                string targetDir = Path.Combine(PathResolver.RegistriesDir, "namespaces", ns);
+                                if (Directory.Exists(targetDir) && Directory.EnumerateFileSystemEntries(targetDir).Any())
+                                {
+                                    Directory.Delete(targetDir, true);
+                                    Directory.CreateDirectory(targetDir);
+                                }
+                                else if (!Directory.Exists(targetDir))
+                                {
+                                    Directory.CreateDirectory(targetDir);
+                                }
+
+                                // Move extracted directory to target
+                                foreach (var dirName in directoryNames)
+                                {
+                                    string sourceDir = Path.Combine(cacheTargetDir, dirName);
+                                    if (Directory.Exists(sourceDir))
+                                    {
+                                        // Move all contents from sourceDir to targetDir
+                                        foreach (var dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
+                                            Directory.CreateDirectory(dirPath.Replace(sourceDir, targetDir));
+
+                                        foreach (var newPath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
+                                            File.Copy(newPath, newPath.Replace(sourceDir, targetDir), true);
+
+                                        // Clean up extracted source directory
+                                        Directory.Delete(sourceDir, true);
+                                    }
+                                    else
+                                    {
+                                        throw new Exception($"Expected directory not found after extraction: {sourceDir}");
+                                    }
+                                }
                             }
-                            else if (!Directory.Exists(targetDir))
+                            else
                             {
-                                Directory.CreateDirectory(targetDir);
+                                throw new Exception("No directories found in the zip file.");
                             }
 
-                            Console.WriteLine($"{ANSI_BLUE}[INFO] Download and extract {tag.ZipballUrl}...{ANSI_RESET}");
-                            Directory.CreateDirectory(targetDir);
-
-                            await _compressFileHandler.DownloadAndUnzipFileAsync(tag.ZipballUrl, tempZipPath, targetDir);
-
+                            // Update the last request date
                             entry.LastRequest = DateTime.Now;
                         }
                     }
@@ -201,7 +231,7 @@ public class RegistryManager
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ANSI_RED}[ERROR] Failed to fetch {entry.Source}: {ex.Message}{ANSI_RESET}");
+                Console.WriteLine($"{ANSI_RED}[ERROR] Failed to fetch @{ns}:{entry.Owner}/{entry.RepoName}: {ex.Message}{ANSI_RESET}");
             }
         }
 
