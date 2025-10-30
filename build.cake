@@ -5,9 +5,10 @@
 var target = Argument("target", "Default");
 var configuration = Argument("configuration", "Debug"); // "Debug" or "Release"
 var coverage = Argument("coverage", ""); // "coverage", "xml" or "cobertura"
-var versionToApply = Argument("version", ""); // e.g. 0.2.0 or 0.2.0-beta
+var versionToApply = Argument("app-version", ""); // e.g. 0.2.0 or 0.2.0-beta
 var gitUserName = Argument("gitUserName", "github-actions");
 var gitUserEmail = Argument("gitUserEmail", "actions@github.com");
+var propsFile = "./Directory.Build.props";
 
 Dictionary<string, Dictionary<string, List<string>>> testCategories = new Dictionary<string, Dictionary<string, List<string>>>{
     {"Unit", new Dictionary<string, List<string>>{
@@ -21,6 +22,41 @@ Dictionary<string, Dictionary<string, List<string>>> testCategories = new Dictio
         {"StackCommand", new List<string>{"Command_StackHelp", "Command_StackList", "Command_StackStart", "Command_StackRestart", "Command_StackStop" } }
     }},
 };
+
+//////////////////////////////////////////////////////////////////////
+// FUNCTIONS
+//////////////////////////////////////////////////////////////////////
+
+void UpdateVersion(string version)
+{
+    if(!System.IO.File.Exists(propsFile))
+        throw new CakeException($"File not found: {propsFile}");
+
+    var text = System.IO.File.ReadAllText(propsFile);
+    text = System.Text.RegularExpressions.Regex.Replace(text, "<Version>.*?</Version>", $"<Version>{version}</Version>");
+    text = System.Text.RegularExpressions.Regex.Replace(text, "<AssemblyVersion>.*?</AssemblyVersion>", $"<AssemblyVersion>{version}.0</AssemblyVersion>");
+    text = System.Text.RegularExpressions.Regex.Replace(text, "<FileVersion>.*?</FileVersion>", $"<FileVersion>{version}.0</FileVersion>");
+    text = System.Text.RegularExpressions.Regex.Replace(text, "<InformationalVersion>.*?</InformationalVersion>", $"<InformationalVersion>{version}+build</InformationalVersion>");
+    System.IO.File.WriteAllText(propsFile, text, System.Text.Encoding.UTF8);
+    Information("Updated version in {0} to {1}", propsFile, version);
+}
+
+void CommitAndPush(string message, bool createTag = false)
+{
+    StartProcess("git", new ProcessSettings { Arguments = $"config user.name \"{gitUserName}\"" });
+    StartProcess("git", new ProcessSettings { Arguments = $"config user.email \"{gitUserEmail}\"" });
+    StartProcess("git", new ProcessSettings { Arguments = "add Directory.Build.props" });
+    StartProcess("git", new ProcessSettings { Arguments = $"commit -m \"{message}\" || true" });
+    StartProcess("git", new ProcessSettings { Arguments = "push" });
+
+    if (createTag)
+    {
+        var tagName = "v" + versionToApply;
+        StartProcess("git", new ProcessSettings { Arguments = $"tag -f {tagName}" });
+        StartProcess("git", new ProcessSettings { Arguments = "push origin --tags" });
+        Information("Created tag {0}", tagName);
+    }
+}
 
 //////////////////////////////////////////////////////////////////////
 // TASKS
@@ -136,72 +172,20 @@ Task("Version.Beta")
   .Does(() =>
 {
     if (string.IsNullOrWhiteSpace(versionToApply))
-    {
-        Information("No version provided. Compute from GITHUB_REF or exit.");
-        var env = EnvironmentVariable("GITHUB_REF") ?? EnvironmentVariable("GITHUB_HEAD_REF") ?? "";
-        Information("GITHUB_REF: {0}", env);
-        // fallback
         versionToApply = "0.1.0-beta";
-    }
-    Information("Applying beta version: {0}", versionToApply);
 
-    var csprojFiles = GetFiles("./**/*.csproj");
-    foreach (var file in csprojFiles)
-    {
-        var text = System.IO.File.ReadAllText(file.FullPath);
-        if (text.Contains("<Version>"))
-        {
-            text = System.Text.RegularExpressions.Regex.Replace(text, "<Version>.*?</Version>", $"<Version>{versionToApply}</Version>");
-        }
-        else
-        {
-            // insert into first PropertyGroup
-            text = System.Text.RegularExpressions.Regex.Replace(text, "(<PropertyGroup[^>]*>)", $"$1\n    <Version>{versionToApply}</Version>");
-        }
-        System.IO.File.WriteAllText(file.FullPath, text, System.Text.Encoding.UTF8);
-        Information("Updated {0}", file.FullPath);
-    }
-
-    // commit changes and push tag candidate (no tag for beta).
-    StartProcess("git", new ProcessSettings { Arguments = "config user.name \"" + gitUserName + "\"" });
-    StartProcess("git", new ProcessSettings { Arguments = "config user.email \"" + gitUserEmail + "\"" });
-    StartProcess("git", new ProcessSettings { Arguments = "add -A" });
-    StartProcess("git", new ProcessSettings { Arguments = "commit -m \"chore: apply beta version " + versionToApply + "\" || true" });
-    StartProcess("git", new ProcessSettings { Arguments = "push" });
+    UpdateVersion(versionToApply);
+    // CommitAndPush($"chore: apply beta version {versionToApply}");
 });
 
 Task("Version.Release")
   .Does(() =>
 {
     if (string.IsNullOrWhiteSpace(versionToApply))
-    {
         throw new CakeException("Version must be provided to Version.Release task");
-    }
-    Information("Applying release version: {0}", versionToApply);
 
-    var csprojFiles = GetFiles("./**/*.csproj");
-    foreach (var file in csprojFiles)
-    {
-        var text = System.IO.File.ReadAllText(file.FullPath);
-        if (text.Contains("<Version>"))
-        {
-            text = System.Text.RegularExpressions.Regex.Replace(text, "<Version>.*?</Version>", $"<Version>{versionToApply}</Version>");
-        }
-        else
-        {
-            text = System.Text.RegularExpressions.Regex.Replace(text, "(<PropertyGroup[^>]*>)", $"$1\n    <Version>{versionToApply}</Version>");
-        }
-        System.IO.File.WriteAllText(file.FullPath, text, System.Text.Encoding.UTF8);
-        Information("Updated {0}", file.FullPath);
-    }
-
-    // commit and tag
-    StartProcess("git", new ProcessSettings { Arguments = "config user.name \"" + gitUserName + "\"" });
-    StartProcess("git", new ProcessSettings { Arguments = "config user.email \"" + gitUserEmail + "\"" });
-    StartProcess("git", new ProcessSettings { Arguments = "add -A" });
-    StartProcess("git", new ProcessSettings { Arguments = "git commit -m \"chore: release version " + versionToApply + "\" || true" });
-    StartProcess("git", new ProcessSettings { Arguments = "git tag -f v" + versionToApply });
-    StartProcess("git", new ProcessSettings { Arguments = "git push origin --follow-tags" });
+    UpdateVersion(versionToApply);
+    // CommitAndPush($"chore: release version {versionToApply}", createTag: true);
 });
 
 Task("Default")

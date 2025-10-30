@@ -62,7 +62,7 @@ public class RegistryManager
 
         foreach (var (ns, entry) in registries)
         {
-            Console.WriteLine($"{ANSI_BLUE}[INFO] {ns}:{GitHubClient.GitHubApiUrl}{entry.Owner}/{entry.RepoName}{ANSI_RESET}");
+            Console.WriteLine($"{ANSI_BLUE}[INFO] {ns}:{GitHubClient.GitHubApiUrl}repos/{entry.Owner}/{entry.RepoName}{ANSI_RESET}");
 
             if (verbose)
             {
@@ -135,7 +135,6 @@ public class RegistryManager
             try
             {
                 Console.WriteLine($"{ANSI_BLUE}[INFO] Fetching source @{ns}:{entry.Owner}/{entry.RepoName}{ANSI_RESET}");
-
 
                 // Get latest release and tags
                 var latestRelease = await _gitHubClient.Repository.Release.GetLatest(entry.Owner, entry.RepoName);
