@@ -28,12 +28,11 @@ public class RegistryManager
         HttpBrowserClient = httpClient ?? new BrowserClient();
         _compressFileHandler = new CompressedFileHandler(HttpBrowserClient);
 
-        string? version = Assembly.GetExecutingAssembly()
-                      .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-                      .InformationalVersion;
+        string? appName = AppInfo.GetName();
+        string? appVersion = AppInfo.GetVersion();
 
         _gitHubClient = new GitHubClient(new Connection(
-            productInformation: new ProductHeaderValue("Lampman", version),
+            productInformation: new ProductHeaderValue(appName, appVersion),
             baseAddress: GitHubClient.GitHubApiUrl
         ));
     }

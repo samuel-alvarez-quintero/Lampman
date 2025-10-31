@@ -84,7 +84,7 @@ public class ServiceCommand : Command
         bool verbose = parseResult.GetValue(_verboseOption);
 
         if (verbose)
-            _manager.HttpBrowserClient = new VerboseBrowserClient();
+            _manager.HttpBrowserClient = BrowserClient.CreateVerboseClient();
 
         string service = parseResult.GetValue(_serviceArgument) ?? string.Empty;
 
@@ -96,7 +96,7 @@ public class ServiceCommand : Command
         bool verbose = parseResult.GetValue(_verboseOption);
 
         if (verbose)
-            _manager.HttpBrowserClient = new VerboseBrowserClient();
+            _manager.HttpBrowserClient = BrowserClient.CreateVerboseClient();
 
         string service = parseResult.GetValue(_serviceArgument) ?? string.Empty;
 
@@ -108,7 +108,7 @@ public class ServiceCommand : Command
         bool verbose = parseResult.GetValue(_verboseOption);
 
         if (verbose)
-            _manager.HttpBrowserClient = new VerboseBrowserClient();
+            _manager.HttpBrowserClient = BrowserClient.CreateVerboseClient();
 
         string service = parseResult.GetValue(_serviceArgument) ?? string.Empty;
 

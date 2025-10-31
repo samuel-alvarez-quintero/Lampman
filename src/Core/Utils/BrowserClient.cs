@@ -6,28 +6,25 @@ public class BrowserClient : HttpClient
 {
     public BrowserClient() : base()
     {
-        string? version = Assembly.GetExecutingAssembly()
-                      .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-                      .InformationalVersion;
+        DefaultConfig();
+    }
 
+    public BrowserClient(LoggingHandler log) : base(log)
+    {
+        DefaultConfig();
+    }
+    private void DefaultConfig()
+    {
         DefaultRequestHeaders.Clear();
-        DefaultRequestHeaders.UserAgent.ParseAdd($"Lampman/{version}");
+        DefaultRequestHeaders.UserAgent.ParseAdd(AppInfo.GetUserAgent());
         DefaultRequestHeaders.Accept.ParseAdd("*/*");
         DefaultRequestHeaders.Connection.Add("keep-alive");
     }
-}
 
-public class VerboseBrowserClient : HttpClient
-{
-    public VerboseBrowserClient() : base(new LoggingHandler(new HttpClientHandler()))
+    public static BrowserClient CreateVerboseClient()
     {
-        string? version = Assembly.GetExecutingAssembly()
-                      .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-                      .InformationalVersion;
+        LoggingHandler log = new(new HttpClientHandler());
 
-        DefaultRequestHeaders.Clear();
-        DefaultRequestHeaders.UserAgent.ParseAdd($"Lampman/{version}");
-        DefaultRequestHeaders.Accept.ParseAdd("*/*");
-        DefaultRequestHeaders.Connection.Add("keep-alive");
+        return new BrowserClient(log);
     }
 }

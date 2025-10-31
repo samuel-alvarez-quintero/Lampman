@@ -144,7 +144,7 @@ public class RegistryCommand : Command
         bool force = parseResult.GetValue(_forceOption);
 
         if (verbose)
-            _manager.HttpBrowserClient = new VerboseBrowserClient();
+            _manager.HttpBrowserClient = BrowserClient.CreateVerboseClient();
 
         if (force)
             await _manager.FetchRegistrySources(verbose);
@@ -157,7 +157,7 @@ public class RegistryCommand : Command
         bool verbose = parseResult.GetValue(_verboseOption);
 
         if (verbose)
-            _manager.HttpBrowserClient = new VerboseBrowserClient();
+            _manager.HttpBrowserClient = BrowserClient.CreateVerboseClient();
 
         string? ns = parseResult.GetValue(_nsArgument);
 
@@ -187,7 +187,7 @@ public class RegistryCommand : Command
         bool verbose = parseResult.GetValue(_verboseOption);
 
         if (verbose)
-            _manager.HttpBrowserClient = new VerboseBrowserClient();
+            _manager.HttpBrowserClient = BrowserClient.CreateVerboseClient();
 
         string ns = parseResult.GetValue(_nsArgument) ?? string.Empty;
 
@@ -200,7 +200,7 @@ public class RegistryCommand : Command
         bool force = parseResult.GetValue(_forceOption);
 
         if (verbose)
-            _manager.HttpBrowserClient = new VerboseBrowserClient();
+            _manager.HttpBrowserClient = BrowserClient.CreateVerboseClient();
 
         await _manager.FetchRegistrySources(force, verbose);
     }
