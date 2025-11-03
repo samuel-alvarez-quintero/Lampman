@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -209,10 +208,6 @@ public class RegistryManager
 
                                         // Clean up extracted source directory
                                         Directory.Delete(sourceDir, true);
-                                    }
-                                    else
-                                    {
-                                        throw new Exception($"Expected directory not found after extraction: {sourceDir}");
                                     }
                                 }
                             }

@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace Lampman.Core.Utils;
 
 public class BrowserClient : HttpClient
