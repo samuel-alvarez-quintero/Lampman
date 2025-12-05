@@ -23,14 +23,11 @@ public class ServiceManager
         _compressFileHandler = new CompressedFileHandler(HttpBrowserClient);
     }
 
-    public async Task InstallService(string serviceInput)
+    public async Task InstallService(string serviceInput, string? osTarget = null)
     {
         try
         {
-            if (!File.Exists(PathResolver.ServicesInstalledDir))
-                throw new Exception("Local services registry not found. Run `lampman registry update` first.");
-
-            var (serviceName, version, meta) = ServiceResolver.Resolve(serviceInput);
+            var (serviceName, version, meta) = ServiceResolver.Resolve(serviceInput, osTarget);
             var url = meta.Url;
 
             var targetDir = Path.Combine(InstallDir, serviceName, version);
@@ -67,7 +64,6 @@ public class ServiceManager
         catch (Exception ex)
         {
             Console.WriteLine($"{ANSI_RED}[ERROR] Failed to install - {ex.Message}{ANSI_RESET}");
-            throw;
         }
     }
 

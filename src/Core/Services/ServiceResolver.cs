@@ -7,43 +7,61 @@ namespace Lampman.Core.Services;
 
 public static class ServiceResolver
 {
-    private static readonly string ServicesConfigFile = PathResolver.ServicesInstalledDir;
-
-    public static (string serviceName, string version, ServiceSource metadata) Resolve(string input)
+    public static (string serviceName, string version, ServiceSource metadata) Resolve(string input, string? osTarget = null)
     {
-        if (!File.Exists(ServicesConfigFile))
-            throw new Exception("Local services registry not found. Run `lampman registry update` first.");
+        if (!Directory.Exists(PathResolver.RegistriesDir))
+            throw new Exception("Local registry files not found. Run `lampman registry update` first.");
 
-        var services = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, ServiceSource>>>(
-            File.ReadAllText(ServicesConfigFile));
+        string osDirectoryName = osTarget ?? AppInfo.GetOSDirectoryName();
 
         // Parse input
         var (serviceName, version) = Parse(input);
 
-        if (services is null)
+        RegistryServices? registrySources = null;
+
+        string registryNsPath = Path.Combine(PathResolver.RegistriesDir, "namespaces");
+        if (Directory.Exists(registryNsPath))
+        {
+            foreach (var nsPath in Directory.GetDirectories(registryNsPath, "*", SearchOption.TopDirectoryOnly))
+            {
+                string registryServicePath = Path.Combine(nsPath, osDirectoryName, serviceName, "registry.json");
+
+                if (File.Exists(registryServicePath))
+                {
+                    registrySources = JsonSerializer.Deserialize<RegistryServices>(File.ReadAllText(registryServicePath));
+                    break;
+                }
+                else
+                {
+                    throw new Exception($"The registry.json file doesn't exist for the {serviceName} service");
+                }
+            }
+        }
+
+        if (registrySources is null)
             throw new Exception("Local services registry is empty. Run `lampman registry update` first.");
 
-        if (!services.TryGetValue(serviceName, out var serviceSelected))
+        if (!registrySources.Services.TryGetValue(serviceName, out var selectedServices))
             throw new Exception($"Service `{serviceName}` not found in registry.");
 
         // Get latest by semantic order
         if (version is null)
         {
-            version = serviceSelected.Keys
-            .OrderByDescending(v => v)
-            .First()
-            .ToString();
+            version = selectedServices
+            .OrderByDescending(item => item.Key)
+            .First(item => item.Value.Url is not null)
+            .Key.ToString();
         }
         else
         {
-            version = serviceSelected.Keys
-            .Where(v => v.Contains(version))
-            .OrderByDescending(v => v)
-            .First()
-            .ToString();
+            version = selectedServices
+            .Where(item => item.Key.Contains(version))
+            .OrderByDescending(item => item.Key)
+            .First(item => item.Value.Url is not null)
+            .Key.ToString();
         }
 
-        if (!serviceSelected.TryGetValue(version, out ServiceSource? metadata))
+        if (!selectedServices.TryGetValue(version, out ServiceSource? metadata))
             throw new Exception($"Service `{serviceName}` does not have version `{version}`.");
 
         return (serviceName, version, metadata);

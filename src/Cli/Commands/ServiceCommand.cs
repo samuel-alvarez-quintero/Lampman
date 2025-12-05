@@ -11,9 +11,12 @@ namespace Lampman.Cli.Commands;
 /// </summary>
 public class ServiceCommand : Command
 {
-    private readonly ServiceManager _manager;
+    private ServiceManager _manager;
 
     private readonly Argument<string> _serviceArgument;
+
+    private readonly Option<string> _osTargetOption;
+
     private readonly Option<bool> _verboseOption;
 
     /// <summary>
@@ -41,6 +44,13 @@ public class ServiceCommand : Command
             Description = "Service and version (e.g. php:8.3)"
         };
 
+        _osTargetOption = new("--os-target")
+        {
+            Description = "Operating system target for the service (windows, linux)",
+            Required = true,
+            DefaultValueFactory = _ => AppInfo.GetOSDirectoryName()
+        };
+
         _verboseOption = new("--verbose", ["-v"])
         {
             Description = "The output provides detailed logs and error messages",
@@ -52,6 +62,7 @@ public class ServiceCommand : Command
         _installCmd = new("install", "Install a service")
         {
             _serviceArgument,
+            _osTargetOption,
             _verboseOption
         };
         _installCmd.SetAction(parseResult => InstallExecute(parseResult));
@@ -84,11 +95,12 @@ public class ServiceCommand : Command
         bool verbose = parseResult.GetValue(_verboseOption);
 
         if (verbose)
-            _manager.HttpBrowserClient = BrowserClient.CreateVerboseClient();
+            _manager = new(BrowserClient.CreateVerboseClient());
 
         string service = parseResult.GetValue(_serviceArgument) ?? string.Empty;
+        string osTarget = parseResult.GetValue(_osTargetOption) ?? string.Empty;
 
-        Task.Run(() => _manager.InstallService(service)).Wait();
+        Task.Run(() => _manager.InstallService(service, osTarget)).Wait();
     }
 
     public void UpdateExecute(ParseResult parseResult)
@@ -96,7 +108,7 @@ public class ServiceCommand : Command
         bool verbose = parseResult.GetValue(_verboseOption);
 
         if (verbose)
-            _manager.HttpBrowserClient = BrowserClient.CreateVerboseClient();
+            _manager = new(BrowserClient.CreateVerboseClient());
 
         string service = parseResult.GetValue(_serviceArgument) ?? string.Empty;
 
@@ -108,7 +120,7 @@ public class ServiceCommand : Command
         bool verbose = parseResult.GetValue(_verboseOption);
 
         if (verbose)
-            _manager.HttpBrowserClient = BrowserClient.CreateVerboseClient();
+            _manager = new(BrowserClient.CreateVerboseClient());
 
         string service = parseResult.GetValue(_serviceArgument) ?? string.Empty;
 

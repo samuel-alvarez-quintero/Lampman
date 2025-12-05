@@ -20,17 +20,16 @@ public class CompressedFileHandler(HttpClient? httpClient = null)
             await using (var fileStream = new FileStream(destinationZipPath, FileMode.Create, FileAccess.Write, FileShare.None))
             {
                 // Compute checksum and copy to destination
-                if (Checksum == null || Checksum.Count == 0)
-                {
-                    Console.WriteLine($"[WARNING] No checksum provided, skipping verification.");
+                string? hashFuncSelected = string.Empty;
+                HashAlgorithm? algo = null;
+                string? checksumSelected = string.Empty;
 
-                    await contentStream.CopyToAsync(fileStream);
-                }
-                else
+                if (Checksum != null && Checksum.Count > 0)
                 {
                     foreach (var (hashFunc, expectedChecksum) in Checksum)
                     {
-                        HashAlgorithm algo;
+                        // Check hashFunc and expectedChecksum is not empty
+                        if (string.IsNullOrEmpty(hashFunc) || string.IsNullOrEmpty(expectedChecksum)) continue;
 
                         switch (hashFunc)
                         {
@@ -52,29 +51,41 @@ public class CompressedFileHandler(HttpClient? httpClient = null)
                                 continue;
                         }
 
-                        Console.WriteLine($"[INFO] Verifying checksum for {hashFunc}...");
+                        hashFuncSelected = hashFunc;
+                        checksumSelected = expectedChecksum;
+                        break; // Use the first valid checksum
+                    }
+                }
 
-                        // Wrap file stream with hashing stream
-                        using var cryptoStream = new CryptoStream(fileStream, algo, CryptoStreamMode.Write);
+                if (algo is null || string.IsNullOrEmpty(hashFuncSelected) || string.IsNullOrEmpty(checksumSelected))
+                {
+                    Console.WriteLine($"[WARNING] No checksum provided, skipping verification.");
 
-                        await contentStream.CopyToAsync(cryptoStream);
+                    await contentStream.CopyToAsync(fileStream);
+                }
+                else
+                {
+                    Console.WriteLine($"[INFO] Verifying checksum for {hashFuncSelected}...");
 
-                        // Flush all buffers
-                        cryptoStream.FlushFinalBlock();
+                    // Wrap file stream with hashing stream
+                    using var cryptoStream = new CryptoStream(fileStream, algo, CryptoStreamMode.Write);
 
-                        // Compute final hash
-                        var hashBytes = algo.Hash!;
-                        var actualChecksum = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                    await contentStream.CopyToAsync(cryptoStream);
 
-                        if (string.Equals(actualChecksum, expectedChecksum.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
-                        {
-                            Console.WriteLine($"[SUCCESS] Checksum verified: {actualChecksum}");
-                            break;
-                        }
-                        else
-                        {
-                            Console.WriteLine($"[ERROR] Checksum mismatch: {actualChecksum}");
-                        }
+                    // Flush all buffers
+                    cryptoStream.FlushFinalBlock();
+
+                    // Compute final hash
+                    var hashBytes = algo.Hash!;
+                    var actualChecksum = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+
+                    if (string.Equals(actualChecksum, checksumSelected.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"[SUCCESS] Checksum verified: {actualChecksum}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[ERROR] Checksum mismatch: {actualChecksum}");
                     }
                 }
             }
